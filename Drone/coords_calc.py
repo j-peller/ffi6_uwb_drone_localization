@@ -6,7 +6,7 @@ pos = tuple[float, float, float]
 """
 
 # default anchor positions in meters
-POS_A1 = (-0.5,  0.5, 1.0)  # North-West
+POS_A1 = (-0.5,  0.5, 0.0)  # North-West
 POS_A2 = ( 0.5,  0.5, 0.0)  # North-East
 POS_A3 = (-0.5, -0.5, 0.0)  # South-West
 POS_A4 = ( 0.5, -0.5, 0.0)  # South-East
@@ -38,39 +38,49 @@ def get_coords(
     a = [
         [-2*pos_a1[0]+2*pos_a2[0],
          -2*pos_a1[1]+2*pos_a2[1],
-         -2*pos_a1[1]+2*pos_a2[1]],
+        #  -2*pos_a1[1]+2*pos_a2[1]
+         ],
         
         [-2*pos_a2[0]+2*pos_a3[0],
          -2*pos_a2[1]+2*pos_a3[1],
-         -2*pos_a2[1]+2*pos_a3[1]],
+        #  -2*pos_a2[1]+2*pos_a3[1]
+         ],
         
         [-2*pos_a3[0]+2*pos_a4[0],
          -2*pos_a3[1]+2*pos_a4[1],
-         -2*pos_a3[1]+2*pos_a4[1]],
+        #  -2*pos_a3[1]+2*pos_a4[1]
+         ],
         
-        [-2*pos_a1[0]+2*pos_a3[0],
-         -2*pos_a1[1]+2*pos_a3[1],
-         -2*pos_a1[1]+2*pos_a3[1]],
+        # [-2*pos_a1[0]+2*pos_a3[0],
+        #  -2*pos_a1[1]+2*pos_a3[1],
+        #  -2*pos_a1[1]+2*pos_a3[1]],
         
-        [-2*pos_a1[0]+2*pos_a4[0],
-         -2*pos_a1[1]+2*pos_a4[1],
-         -2*pos_a1[1]+2*pos_a4[1]],
+        # [-2*pos_a1[0]+2*pos_a4[0],
+        #  -2*pos_a1[1]+2*pos_a4[1],
+        #  -2*pos_a1[1]+2*pos_a4[1]],
         
-        [-2*pos_a2[0]+2*pos_a4[0],
-         -2*pos_a2[1]+2*pos_a4[1],
-         -2*pos_a2[1]+2*pos_a4[1]],
+        # [-2*pos_a2[0]+2*pos_a4[0],
+        #  -2*pos_a2[1]+2*pos_a4[1],
+        #  -2*pos_a2[1]+2*pos_a4[1]],
     ]
 
     b = [
         d1 ** 2 - d2 ** 2,
         d2 ** 2 - d3 ** 2,
         d3 ** 2 - d4 ** 2,
-        d1 ** 2 - d3 ** 2,
-        d1 ** 2 - d4 ** 2,
-        d2 ** 2 - d4 ** 2
+        # d1 ** 2 - d3 ** 2,
+        # d1 ** 2 - d4 ** 2,
+        # d2 ** 2 - d4 ** 2
     ]
 
-    return np.linalg.lstsq(a, b)
+    xy_solution = np.linalg.lstsq(a, b)[0]
+    z_solution = resubstitution_for_height(d1, xy_solution[0], xy_solution[1], pos_a1)
+    return float(xy_solution[0]), float(xy_solution[1]), float(z_solution)
+
+def resubstitution_for_height(d: float, x: float, y: float, pos_a: pos) \
+        -> float:
+    z = math.sqrt(d ** 2 - (pos_a[0] - x) ** 2 - (pos_a[1] - y) ** 2) - pos_a[2]
+    return z
 
 def generate_distances(
     true_pos: pos, noise: float = None,
@@ -110,10 +120,15 @@ def generate_distances(
 
 
 if __name__ == "__main__":
-    distances = generate_distances((0, 1, 1))
+    known_good = (0.5, 2, 10)
+    distances = generate_distances(known_good, 0.3 / 1.96)  # here: +- 30 cm in 95% of cases
     print(distances)
 
     loesung = get_coords(
         *distances
     )
     print(loesung)
+
+    differenz = math.sqrt(sum(((loesung[i] - known_good[i])**2 for i in range(len(known_good)))))
+    print(differenz)
+    print(tuple((loesung[i] - known_good[i] for i in range(len(known_good)))))

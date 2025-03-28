@@ -74,7 +74,13 @@ def get_coords(
     ]
 
     xy_solution = np.linalg.lstsq(a, b)[0]
-    z_solution = resubstitution_for_height(d1, xy_solution[0], xy_solution[1], pos_a1)
+    z_solutions = [
+        resubstitution_for_height(d1, xy_solution[0], xy_solution[1], pos_a1),
+        resubstitution_for_height(d2, xy_solution[0], xy_solution[1], pos_a2),
+        resubstitution_for_height(d3, xy_solution[0], xy_solution[1], pos_a3),
+        resubstitution_for_height(d4, xy_solution[0], xy_solution[1], pos_a4)
+    ]
+    z_solution = np.mean(z_solutions)
     return float(xy_solution[0]), float(xy_solution[1]), float(z_solution)
 
 def resubstitution_for_height(d: float, x: float, y: float, pos_a: pos) \
@@ -121,14 +127,14 @@ def generate_distances(
 
 if __name__ == "__main__":
     known_good = (0.5, 2, 10)
-    distances = generate_distances(known_good, 0.3 / 1.96)  # here: +- 30 cm in 95% of cases
-    print(distances)
+    print("Actual position:", known_good)
+    distances = generate_distances(known_good, 0.1 / 1.96)  # here: +- 10 cm in 95% of cases
+    print("Distances to anchors:", distances)
 
     loesung = get_coords(
         *distances
     )
-    print(loesung)
+    print("Solution position:", loesung)
 
     differenz = math.sqrt(sum(((loesung[i] - known_good[i])**2 for i in range(len(known_good)))))
-    print(differenz)
-    print(tuple((loesung[i] - known_good[i] for i in range(len(known_good)))))
+    print("Distance to actual:", round(differenz, 6))

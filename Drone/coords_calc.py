@@ -126,9 +126,9 @@ def generate_distances(
 
 
 if __name__ == "__main__":
-    known_good = (0.5, 2, 10)
+    known_good = (0, 2, 10)
     print("Actual position:", known_good)
-    distances = generate_distances(known_good, 0.1 / 1.96)  # here: +- 10 cm in 95% of cases
+    distances = generate_distances(known_good) #, 0.1 / 1.96)  # here: +- 10 cm in 95% of cases
     print("Distances to anchors:", distances)
 
     loesung = get_coords(

@@ -1,20 +1,8 @@
 #include <iostream>
 #include <chrono>
 #include <random>
-#include "eigen-3.4.0/Eigen/Dense"
 
-typedef struct {
-    double x;
-    double y;
-    double z;
-} pos;
-
-typedef struct {
-    double d1;
-    double d2;
-    double d3;
-    double d4;
-} distances;
+#include "coords_calc.h"
 
 /**
  * @brief Euclidean distance between to positions using pos datatype.
@@ -81,10 +69,28 @@ pos coords_calc(
 
     double x = solution[0];
     double y = solution[1];
-    double z = (resubstitution_for_height(d1, x, y, pos_A1)
-        + resubstitution_for_height(d2, x, y, pos_A2)
-        + resubstitution_for_height(d3, x, y, pos_A3)
-        + resubstitution_for_height(d4, x, y, pos_A4)) / 4;
+
+    // calculate z and check for NaN when resubstituting
+    double z_sum = 0;
+    uint8_t z_count = 0;
+    double z1 = resubstitution_for_height(d1, x, y, pos_A1);
+    if (!std::isnan(z1)) {
+        z_sum += z1; z_count++;
+    }
+    double z2 = resubstitution_for_height(d2, x, y, pos_A2);
+    if (!std::isnan(z2)) {
+        z_sum += z2; z_count++;
+    }
+    double z3 = resubstitution_for_height(d3, x, y, pos_A3);
+    if (!std::isnan(z3)) {
+        z_sum += z3; z_count++;
+    }
+    double z4 = resubstitution_for_height(d4, x, y, pos_A4);
+    if (!std::isnan(z4)) {
+        z_sum += z4; z_count++;
+    }
+    double z;
+    if (z_count == 0) {z = NAN;} else {z = z_sum / z_count;}
 
     return (pos) {x, y, z};
 }
@@ -139,22 +145,4 @@ distances generate_distances(
         euclidean_dist_pos(true_pos, pos_A3),
         euclidean_dist_pos(true_pos, pos_A4)
     };
-}
-
-int main() {
-    pos known_good = {15, 32, 10};
-
-    pos A1 = {-0.5,  0.5, 0.0};
-    pos A2 = { 0.5,  0.5, 0.0};
-    pos A3 = {-0.5, -0.5, 0.0};
-    pos A4 = { 0.5, -0.5, 0.0};
-    
-    distances dists = generate_distances(known_good, A1, A2, A3, A4, 0.1);
-
-    pos ret_val = coords_calc(
-        dists.d1, dists.d2, dists.d3, dists.d4,
-        A1, A2, A3, A4
-    );
-
-    std::cout << "Position: " << ret_val.x << " " << ret_val.y << " " << ret_val.z << std::endl;
 }

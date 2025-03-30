@@ -30,8 +30,8 @@ public:
 private:
     DWMController(int spi_fd, dw1000_dev_instance_t* device);
 
-    void readBytes(uint16_t reg, uint8_t* data, int len);
-    void writeBytes(uint16_t reg, uint8_t* data, int len);
+    void readBytes(uint16_t reg, uint8_t* data, uint32_t len);
+    void writeBytes(uint16_t reg, uint8_t* data, uint32_t len);
 
 private:
     int                     _spi_fd;

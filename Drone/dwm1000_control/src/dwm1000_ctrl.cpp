@@ -106,7 +106,7 @@ void DWMController::get_device_id(uint32_t* device_id)
  * @param len The length of the data to read
  */
 
-void DWMController::readBytes(uint16_t reg, uint8_t* data, int len)
+void DWMController::readBytes(uint16_t reg, uint8_t* data, uint32_t len)
 {
     /* 2 for address header */
     uint8_t tx_buf[2] = {0};
@@ -145,7 +145,7 @@ void DWMController::readBytes(uint16_t reg, uint8_t* data, int len)
  * @param len The length of the data to write
  * 
  */
-void DWMController::writeBytes(uint16_t reg, uint8_t* data, int len)
+void DWMController::writeBytes(uint16_t reg, uint8_t* data, uint32_t len)
 {
     /* 2 for address header */
     uint8_t tx_buf[2 + len];

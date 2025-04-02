@@ -112,9 +112,6 @@ void DWMController::get_device_id(uint32_t* device_id)
  */
 void DWMController::readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t n)
 {
-    /* n for expected data to receive */
-    uint8_t* rx_buf = new uint8_t[n];
-
     /* Build SPI Transaction Header according to 2.2.1.2 p4 DW1000 User Manual */
     dw1000_spi_cmd_t cmd = {
         .reg = reg,
@@ -135,21 +132,15 @@ void DWMController::readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint3
     /* prepare SPI transfer */
     struct spi_ioc_transfer tr = {
         .tx_buf = (unsigned long)header,
-        .rx_buf = (unsigned long)rx_buf,
+        .rx_buf = (unsigned long)data,
         .len = cmd_len + n,
     };
 
     /* syscall to SPI Kernel driver to read data from requested register */
     if (ioctl(_spi_fd, SPI_IOC_MESSAGE(1), &tr) < 0) {
         perror("Failed to read from SPI device");
-        delete[] rx_buf;
         return;
     }
-
-    // Read the data
-    memcpy(data, rx_buf + cmd_len, n);    /* skip the first 2 bytes, which are the register address */
-
-    delete[] rx_buf;
 }
 
 

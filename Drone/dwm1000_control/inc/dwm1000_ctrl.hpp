@@ -9,6 +9,9 @@
 
 #define MAX_SPI_BAUDRATE 20000000 // 20MHz
 
+/**
+ * @brief DWM1000 device instance structure
+ */
 typedef struct {
     const char* spi_dev;
     int         spi_baudrate;
@@ -18,7 +21,21 @@ typedef struct {
     uint8_t     rst_pin;
 } dw1000_dev_instance_t;
 
+/**
+ * @brief SPI command structure for the DWM1000
+ */
+typedef struct {
+    uint32_t reg:6;          //!< Indicates the register to be read or write into
+    uint32_t subindex:1;     //!< Indicates offset address of the register
+    uint32_t operation:1;    //!< Read or Write operation
+    uint32_t extended:1;     //!< If subaddress is higher than 128
+    uint32_t subaddress:15;  //!< Indicates subaddress of register
+} dw1000_spi_cmd_t;
 
+
+/**
+ * @brief DWM1000 Controller class. Communication Interface to the DWM1000 using SPI
+ */
 class DWMController {
 
 public:
@@ -30,12 +47,21 @@ public:
 private:
     DWMController(int spi_fd, dw1000_dev_instance_t* device);
 
-    void readBytes(uint16_t reg, uint8_t* data, uint32_t len);
-    void writeBytes(uint16_t reg, uint8_t* data, uint32_t len);
+    void readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t len);
+    void writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t len);
 
 private:
     int                     _spi_fd;
     dw1000_dev_instance_t   _dev_instance;
+
+    /* SPI Transaction Header operation modes  */
+    static const uint8_t    READ        = 0x00;
+    static const uint8_t    READ_SUB    = 0x40;
+    static const uint8_t    WRITE       = 0x80;
+    static const uint8_t    WRITE_SUB   = 0x80;
+
+    /* If we just wanna read a normal register... */
+    static const uint8_t    NO_SUB_ADDRESS    = 0x00;
 
 };
 

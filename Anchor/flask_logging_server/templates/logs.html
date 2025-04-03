@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ESP Logs</title>
+    <style>
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h2>ESP Logs</h2>
+    <table>
+        <tr><th>Timestamp</th><th>ID</th><th>Message</th></tr>
+        <tbody id="logTable">
+            {% for line in lines %}
+            <tr>
+                <td>{{ line[0] }} {{ line[1] }}</td>
+                <td>{{ line[2] }}</td>
+                <td>{{ line[3] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        const socket = new WebSocket('ws://' + window.location.host + '/ws');
+
+        socket.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                const timestamp = data.timestamp;
+                const message_id = data.id;
+                const message = data.message;
+
+                // Füge die neue Log-Nachricht als neue Zeile in die Tabelle ein
+                const table = document.getElementById('logTable');
+                const newRow = table.insertRow(0);  // Füge oben eine neue Zeile ein
+                newRow.innerHTML = `<td>${timestamp}</td><td>${message_id}</td><td>${message}</td>`;
+            } catch (e) {
+                console.error("Fehler beim Verarbeiten der WebSocket-Nachricht:", e);
+            }
+        };
+
+        socket.onerror = function(error) {
+            console.error('WebSocket Error: ', error);
+        };
+    </script>
+</body>
+</html>

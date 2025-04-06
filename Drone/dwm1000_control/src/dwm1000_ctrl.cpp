@@ -143,6 +143,20 @@ void DWMController::start_transmission() {
 
 
 /**
+ * @brief Get the 40-bit full adjusted TX timestamp from the DW1000
+ * @param time Reference to the DW1000Time object to store the timestamp
+ */
+void DWMController::get_tx_timestamp(DW1000Time& time) 
+{
+    uint8_t data[TX_STAMP_LEN] = {0};
+    readBytes(TX_TIME_ID, TX_TIME_TX_STAMP_OFFSET, data, TX_STAMP_LEN);
+
+    /* Get the TX timestamp */
+    time.set_timestamp(data);
+}
+
+
+/**
  * @brief Start receiving data from the DWM1000
  * 
  *        This method sets the RXENAB bit in the SYS_CTRL register,
@@ -190,6 +204,20 @@ uint8_t* DWMController::read_received_data(uint8_t* n)
     *n = len;
 
     return rx_data;
+}
+
+
+/**
+ * @brief Get the 40-bit full adjusted RX timestamp from the DW1000
+ * @param time Reference to the DW1000Time object to store the timestamp
+ */
+void DWMController::get_rx_timestamp(DW1000Time& time) 
+{
+    uint8_t data[RX_STAMP_LEN] = {0};
+    readBytes(RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, data, RX_STAMP_LEN);
+
+    /* Get the RX timestamp */
+    time.set_timestamp(data);
 }
 
 

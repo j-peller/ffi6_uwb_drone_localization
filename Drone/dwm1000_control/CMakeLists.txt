@@ -25,5 +25,26 @@ file(GLOB_RECURSE SOURCES "src/*.cpp")
 # Add the executable
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-# Link any required libraries (if applicable)
-# target_link_libraries(${PROJECT_NAME} <library_name>)
+# Enable testing
+enable_testing()
+
+# Google Test Integration
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG        v1.16.0  # You can change the tag to the latest stable release
+)
+FetchContent_MakeAvailable(googletest)
+
+# Include directories for Google Test
+include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+
+# Add a test executable for unit tests
+add_executable(DW1000TimeTests "test/dw1000_time_test.cpp" "src/dw1000_time.cpp")
+
+# Link the test executable with Google Test and the project source
+target_link_libraries(DW1000TimeTests gtest gtest_main)
+
+# Run tests after the build
+add_test(NAME DW1000TimeTests COMMAND DW1000TimeTests)

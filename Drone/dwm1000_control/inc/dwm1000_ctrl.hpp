@@ -4,6 +4,7 @@
 #define DWM1000_CTRL_HPP
 
 #include "../extern/uwb-dw1000/hw/drivers/uwb/uwb_dw1000/include/dw1000/dw1000_regs.h"
+#include "../inc/dw1000_time.hpp"
 
 #include <stdint.h>
 
@@ -59,10 +60,12 @@ public:
     /* Transmission */
     void write_transmission_data(uint8_t* data, uint8_t len);
     void start_transmission();
+    void get_tx_timestamp(DW1000Time& time);
 
     /* Receiving */
     void start_receiving();
     uint8_t* read_received_data(uint8_t* len);
+    void get_rx_timestamp(DW1000Time& time);
 
     /* Reset */
     void reset();

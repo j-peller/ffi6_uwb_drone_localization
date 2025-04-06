@@ -9,6 +9,7 @@
 
 #define MAX_SPI_BAUDRATE 20000000 // 20MHz
 
+
 /**
  * @brief DWM1000 device instance structure
  */
@@ -21,6 +22,7 @@ typedef struct {
     uint8_t     rst_pin;
 } dw1000_dev_instance_t;
 
+
 /**
  * @brief SPI command structure for the DWM1000
  */
@@ -31,6 +33,7 @@ typedef struct {
     uint32_t extended:1;     //!< If subaddress is higher than 128
     uint32_t subaddress:15;  //!< Indicates subaddress of register
 } dw1000_spi_cmd_t;
+
 
 /**
  * 
@@ -51,20 +54,18 @@ public:
     static DWMController*   create_instance(dw1000_dev_instance_t* spi_dev);
     ~DWMController();
 
+    /* DW1000 Configuration */
 
     /* Transmission */
+    void write_transmission_data(uint8_t* data, uint8_t len);
     void start_transmission();
-    void stop_transmission();
 
     /* Receiving */
     void start_receiving();
-    void stop_receiving();
+    uint8_t* read_received_data(uint8_t* len);
 
-    /* Write Payload */
-    void write_transmission_data();
-
-    /* Read Payload */
-    void read_received_data();
+    /* Reset */
+    void reset();
 
     /* Setters */
 
@@ -78,18 +79,27 @@ private:
     void readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t len);
     void writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t len);
 
+    /* Setup Transmission Frame Control */
+    void setupTXFrameControl();
+
+    /**/
+    uint8_t getReceivedDataLength();
+    
     /* DW1000 Mode Control */
     void forceIdle();
-
-    /* Cleanup DW1000 Status Registers */
-    void clearReceiveStatus();
-    void clearTransmitStatus();
-
 
 private:
     int                     _spi_fd;
     dw1000_dev_instance_t   _dev_instance;
     dw1000_dev_mode_t       _dev_mode;
+
+    /* GPIO Control */
+    struct gpiod_chip*      _gpio_chip;
+    struct gpiod_line*      _rst_line;
+    struct gpiod_line*      _irq_line;
+
+    /* TX_FCTRL Register */
+    uint32_t                _tx_fctrl;
 
 protected:
     /* SPI Transaction Header operation modes  */

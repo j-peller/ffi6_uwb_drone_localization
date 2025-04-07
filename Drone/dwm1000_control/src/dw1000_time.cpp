@@ -65,7 +65,7 @@ void DW1000Time::set_timestamp(uint64_t timeStamp)
 /**
  * @brief Set the timestamp value from a byte array
  * 
- * @param data Pointer to the byte array containing five bytes of timestamp data
+ * @param data Pointer to byte array containing five bytes with array[0] containing the least significant byte (LSB)
  */
 void DW1000Time::set_timestamp(uint8_t* data)
 {

@@ -253,7 +253,7 @@ void DWMController::get_device_id(uint32_t* device_id)
  * 
  * @param reg The register address to read from
  * @param offset The subaddress / offset within the register
- * @param data Pointer to the buffer to store the read data
+ * @param data Pointer to the buffer to store the read data with data[0] containing the LSB
  * @param len The length of the data to read
  */
 void DWMController::readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t n)
@@ -295,7 +295,7 @@ void DWMController::readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint3
  * 
  * @param reg The register address to write to
  * @param offset The subaddress / offset within the register
- * @param data Pointer to the data to write
+ * @param data Pointer to the data to write with data[0] containing the LSB
  * @param len The length of the data to write
  * 
  */

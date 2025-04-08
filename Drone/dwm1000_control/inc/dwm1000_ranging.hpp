@@ -15,6 +15,7 @@
  */
 class DWMRanging {
 public:
+    DWMRanging();
     DWMRanging(DWMController* controller);
     ~DWMRanging();
 
@@ -22,10 +23,10 @@ public:
     void add_anchor(DWM1000Device* anchor);
 
     /* Ranging */
-    void start_ranging();
+    void get_distances_to_anchors();
 
 private:
-    DW1000Time calculateToF();
+    static void calculateToF(DWM1000Device* anchor, DW1000Time* tof);
 
 private:
     /* DWM1000 of the Drone to send and receive messages */

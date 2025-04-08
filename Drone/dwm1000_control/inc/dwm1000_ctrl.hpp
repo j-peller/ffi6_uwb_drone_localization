@@ -112,7 +112,7 @@ protected:
     static const uint8_t    WRITE_SUB   = 0x80;
 
     /* If we just wanna read a normal register... */
-    static const uint8_t    NO_SUB_ADDRESS    = 0x00;
+    static const uint16_t    NO_SUB_ADDRESS    = 0x0000;
 
 };
 

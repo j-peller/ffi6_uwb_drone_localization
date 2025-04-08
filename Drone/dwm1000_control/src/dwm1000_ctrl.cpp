@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <gpiod.h>
+//#include <gpiod.h>
 
 
 DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
@@ -262,7 +262,7 @@ void DWMController::readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint3
     dw1000_spi_cmd_t cmd = {
         .reg = reg,
         .subindex = offset != 0,
-        .operation = READ,
+        .operation = (offset != 0 ? READ_SUB : READ),
         .extended = offset > 0x7F,
         .subaddress = offset
     };
@@ -275,11 +275,21 @@ void DWMController::readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint3
 
     uint8_t cmd_len = cmd.subindex ? (cmd.extended ? 3 : 2) : 1;
 
+    /* Allocate TX and RX buffers */
+    uint8_t tx_buf[cmd_len + n];
+    uint8_t rx_buf[cmd_len + n];
+    memset(tx_buf, 0, sizeof(cmd_len + n));
+    memset(rx_buf, 0, sizeof(cmd_len + n));
+
+    /* Write header to tx_buffer */
+    memcpy(tx_buf, header, cmd_len);
+
     /* prepare SPI transfer */
     struct spi_ioc_transfer tr = {
-        .tx_buf = (unsigned long)header,
-        .rx_buf = (unsigned long)data,
+        .tx_buf = (unsigned long)tx_buf,
+        .rx_buf = (unsigned long)rx_buf,
         .len = cmd_len + n,
+        .cs_change = 0,
     };
 
     /* syscall to SPI Kernel driver to read data from requested register */
@@ -287,6 +297,9 @@ void DWMController::readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint3
         perror("Failed to read from SPI device");
         return;
     }
+
+    /* copy received data */
+    memcpy(data, rx_buf + cmd_len, n);
 }
 
 
@@ -305,7 +318,7 @@ void DWMController::writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint
     dw1000_spi_cmd_t cmd = {
         .reg = reg,
         .subindex = offset != 0,
-        .operation = WRITE,
+        .operation = (offset != 0 ? WRITE_SUB : WRITE),
         .extended = offset > 0x7F,
         .subaddress = offset
     };

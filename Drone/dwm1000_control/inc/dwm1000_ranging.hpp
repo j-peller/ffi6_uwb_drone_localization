@@ -6,6 +6,7 @@
 #include "dwm1000_ctrl.hpp"
 #include "dw1000_time.hpp"
 #include "dwm1000_device.hpp"
+#include "../../coords_calc/coords_calc.h"
 
 #include <vector>
 #include <memory>
@@ -23,7 +24,7 @@ public:
     void add_anchor(DWM1000Device* anchor);
 
     /* Ranging */
-    void get_distances_to_anchors();
+    bool get_distances_to_anchors(distances* distances);
 
 private:
     static void calculateToF(DWM1000Device* anchor, DW1000Time* tof);

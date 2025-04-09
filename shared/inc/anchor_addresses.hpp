@@ -18,4 +18,7 @@
 #define ANCHOR_3    0xDEAD
 #define ANCHOR_4    0xBEEF
 
+/* Short Address of the UWB Master*/
+#define MASTER      0xB000
+
 #endif

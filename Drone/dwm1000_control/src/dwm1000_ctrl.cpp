@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-//#include <gpiod.h>
 
 
 DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
@@ -218,6 +217,38 @@ void DWMController::get_rx_timestamp(DW1000Time& time)
 
     /* Get the RX timestamp */
     time.set_timestamp(data);
+}
+
+
+/**
+ * @brief Poll System Event Status Register for a specific status bit
+ * @param status_bit The status bit to poll
+ * @param timeout The timeout in nanoseconds
+ */
+error_t DWMController::poll_status_bit(uint8_t status_bit, uint64_t timeout)
+{
+    uint8_t sys_status[SYS_STATUS_LEN] = {0};
+
+    timespec start, now;
+
+    clock_gettime(CLOCK_MONOTONIC_RAW,  &start);
+    do {
+
+        readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &status, SYS_STATE_LEN);
+        clock_gettime(CLOCK_MONOTONIC_RAW,  &now);
+
+        if (timespec_delta_nanoseconds(&now, &start) > timeout) {
+            // fprintf(stderr, "Timeout waiting for status bit\n");
+            return ERROR;
+        }
+
+    } while ((uint64_t)(sys_status) & (0x1ULL << status_bit));
+
+    /* clear status bit */
+    (uint64_t)(sys_status) |= (0x1ULL << status_bit);
+    writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, sys_status, SYS_STATUS_LEN);
+
+    return SUCCESS;
 }
 
 

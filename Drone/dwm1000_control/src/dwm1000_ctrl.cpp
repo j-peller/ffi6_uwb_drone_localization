@@ -293,7 +293,7 @@ void DWMController::readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint3
     dw1000_spi_cmd_t cmd = {
         .reg = reg,
         .subindex = offset != 0,
-        .operation = (offset != 0 ? READ_SUB : READ),
+        .operation = READ,
         .extended = offset > 0x7F,
         .subaddress = offset
     };
@@ -349,7 +349,7 @@ void DWMController::writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint
     dw1000_spi_cmd_t cmd = {
         .reg = reg,
         .subindex = offset != 0,
-        .operation = (offset != 0 ? WRITE_SUB : WRITE),
+        .operation = WRITE,
         .extended = offset > 0x7F,
         .subaddress = offset
     };

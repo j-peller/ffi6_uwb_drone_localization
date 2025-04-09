@@ -119,9 +119,7 @@ private:
 protected:
     /* SPI Transaction Header operation modes  */
     static const uint8_t    READ        = 0x00;
-    static const uint8_t    READ_SUB    = 0x40;
-    static const uint8_t    WRITE       = 0x80;
-    static const uint8_t    WRITE_SUB   = 0x80;
+    static const uint8_t    WRITE       = 0x01;
 
     /* If we just wanna read a normal register... */
     static const uint16_t    NO_SUB_ADDRESS    = 0x0000;

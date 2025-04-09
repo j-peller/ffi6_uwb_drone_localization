@@ -23,3 +23,11 @@ cd build
 cmake ..
 cmake --build .
 ```
+
+Or build using docker buildx:
+
+```bash
+docker buildx build --platform linux/arm64 --build-arg BUILD_TYPE=Release -t rpi5_dwm:arm64 --load . --output type=local,dest=Drone/dwm1000_control/build
+```
+
+The binary can be found in Drone/dwm1000_control/build

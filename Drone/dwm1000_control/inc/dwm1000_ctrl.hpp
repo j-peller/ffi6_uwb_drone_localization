@@ -3,7 +3,7 @@
 #ifndef DWM1000_CTRL_HPP
 #define DWM1000_CTRL_HPP
 
-#include "../../../shared/inc/error_types.hpp"
+#include "../../../shared/inc/constants.hpp"
 #include "../extern/uwb-dw1000/hw/drivers/uwb/uwb_dw1000/include/dw1000/dw1000_regs.h"
 #include "../inc/dw1000_time.hpp"
 
@@ -69,13 +69,13 @@ public:
     void get_rx_timestamp(DW1000Time& time);
 
     /* Poll Status Bit */
-    error_t poll_status_bit(uint8_t offset, uint64_t timeout);
+    dwm_com_error_t poll_status_bit(uint64_t status_bit, uint64_t timeout);
 
-    inline error_t poll_tx_status() {
+    inline dwm_com_error_t poll_tx_status() {
         return poll_status_bit(SYS_STATUS_TXFRS, DW1000_TIMEOUT);
     }
 
-    inline error_t poll_rx_status() {
+    inline dwm_com_error_t poll_rx_status() {
         return poll_status_bit(SYS_STATUS_RXDFR, RX_TIMEOUT);
     }
 

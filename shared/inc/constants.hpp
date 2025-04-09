@@ -10,7 +10,7 @@
 typedef enum : uint8_t {
     SUCCESS = 0x00,
     ERROR   = 0x01,
-} error_t;
+} dwm_com_error_t;
 
 /**
  * @brief Calculate the difference in nanoseconds between two timespecs.

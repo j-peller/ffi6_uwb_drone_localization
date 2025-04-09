@@ -225,7 +225,7 @@ void DWMController::get_rx_timestamp(DW1000Time& time)
  * @param status_bit The status bit to poll
  * @param timeout The timeout in nanoseconds
  */
-error_t DWMController::poll_status_bit(uint8_t status_bit, uint64_t timeout)
+dwm_com_error_t DWMController::poll_status_bit(uint64_t status_bit, uint64_t timeout)
 {
     uint8_t sys_status[SYS_STATUS_LEN] = {0};
 
@@ -234,7 +234,7 @@ error_t DWMController::poll_status_bit(uint8_t status_bit, uint64_t timeout)
     clock_gettime(CLOCK_MONOTONIC_RAW,  &start);
     do {
 
-        readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &status, SYS_STATE_LEN);
+        readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, sys_status, SYS_STATE_LEN);
         clock_gettime(CLOCK_MONOTONIC_RAW,  &now);
 
         if (timespec_delta_nanoseconds(&now, &start) > timeout) {
@@ -242,10 +242,10 @@ error_t DWMController::poll_status_bit(uint8_t status_bit, uint64_t timeout)
             return ERROR;
         }
 
-    } while ((uint64_t)(sys_status) & (0x1ULL << status_bit));
+    } while (*(uint64_t*)(sys_status) & (0x1ULL << status_bit));
 
     /* clear status bit */
-    (uint64_t)(sys_status) |= (0x1ULL << status_bit);
+    (*(uint64_t*)(sys_status)) |= (0x1ULL << status_bit);
     writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, sys_status, SYS_STATUS_LEN);
 
     return SUCCESS;

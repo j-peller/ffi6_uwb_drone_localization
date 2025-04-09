@@ -19,11 +19,21 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 include_directories(${CMAKE_SOURCE_DIR}/extern)
 include_directories(${CMAKE_SOURCE_DIR}/inc)
 
+
 # Add the source files
 file(GLOB_RECURSE SOURCES "src/*.cpp")
+file(GLOB_RECURSE COORDS_SOURCES "../coords_calc/*.cpp")
+
+# 
+find_package(Eigen3 3.4 REQUIRED)
 
 # Add the executable
-add_executable(${PROJECT_NAME} ${SOURCES})
+add_executable(${PROJECT_NAME} ${SOURCES} ${COORDS_SOURCES})
+
+# Link the Eigen3 library
+target_link_libraries(${PROJECT_NAME} Eigen3::Eigen)
+
+
 
 # Enable testing
 enable_testing()

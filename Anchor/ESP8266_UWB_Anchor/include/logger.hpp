@@ -7,5 +7,5 @@ class Logger
         WifiHandler* wifiHandler;
     public:
         Logger(WifiHandler* wifiHandler);
-        const void output(const char* message);
+        const void output(const char* message, ...);
 };

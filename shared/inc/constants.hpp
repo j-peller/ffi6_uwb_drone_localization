@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef CONSTANTS_HPP
 #define CONSTANTS_HPP
 
@@ -22,9 +24,5 @@ typedef enum : uint8_t {
 static inline uint64_t timespec_delta_nanoseconds(struct timespec* end, struct timespec* start) {
     return (((end->tv_sec - start->tv_sec) * 1.0e9) + (end->tv_nsec - start->tv_nsec));
 }
-
-
-
-
 
 #endif

@@ -92,7 +92,7 @@ dwm_com_error_t DWMRanging::do_init_state(DW1000Time& init_tx_ts, uint16_t ancho
 {
     twr_message_t init_msg = {
         .header = (twr_frame_header_t) {
-            .frameCtrl = {0x41, 0xCC},
+            .frameCtrl = {0x41, 0x88},
             .seqNum = 0x00,
             .panID = {0xCA, 0xDE},
             .destAddr = { anchor_addr & 0xff, anchor_addr >> 8 },
@@ -141,8 +141,7 @@ dwm_com_error_t DWMRanging::do_response_ack_state(DW1000Time& ack_rx_ts)
     ack_return = (twr_message_t*) _controller->read_received_data(&ack_len);
     _controller->get_rx_timestamp(ack_rx_ts);
     
-    if (ack_return->payload.response.type 
-            != twr_msg_type_t::TWR_MSG_TYPE_RESPONSE) {
+    if (ack_return->payload.response.type != twr_msg_type_t::TWR_MSG_TYPE_RESPONSE) {
         waitOutError();
         return dwm_com_error_t::ERROR;
     }
@@ -162,7 +161,7 @@ dwm_com_error_t DWMRanging::do_final_state(DW1000Time& fin_tx_ts, uint16_t ancho
 {
     twr_message_t final_msg = {
         .header = (twr_frame_header_t) {
-            .frameCtrl = {0x41, 0xCC},
+            .frameCtrl = {0x41, 0x88},
             .seqNum = 0x00,
             .panID = {0xCA, 0xDE},
             .destAddr = { anchor_addr & 0xff, anchor_addr >> 8 },

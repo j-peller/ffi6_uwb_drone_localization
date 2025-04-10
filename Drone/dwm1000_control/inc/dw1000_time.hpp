@@ -51,12 +51,6 @@ protected:
     static const uint8_t LENGTH_TIMESTAMP   = 5;
     static const uint64_t TIMER_MAX         = 0xffffffffff;
     static const uint64_t TIMER_OVERFLOW    = TIMER_MAX + 1;
-
-    /* Time Factors relative to microseconds */
-    static const uint64_t SECONDS       = 1e6 ;
-    static const uint64_t MILLISECONDS  = 1e3;
-    static const uint64_t MICROSECONDS  = 1;
-    static const uint64_t NANOSECONDS   = 1e-3;
 };
 
 #endif

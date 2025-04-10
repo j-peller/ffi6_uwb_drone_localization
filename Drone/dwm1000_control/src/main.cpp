@@ -1,4 +1,4 @@
-#include "../inc/dwm1000_ctrl.hpp"
+#include "../inc/dwm1000_ranging.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,13 +20,15 @@ int main() {
         return EXIT_FAILURE;
     }
 
-
-    for (;;) {
-        uint32_t id = 0;
-        controller->get_device_id(&id);
-        fprintf(stdout, "0x%08X\n", id);
-        usleep(200000);
+    DWMRanging* ranging = new DWMRanging(controller);
+    if (ranging == NULL) {
+        fprintf(stderr, "Failed to create DWMRanging instance\n");
+        delete controller;
+        return EXIT_FAILURE;
     }
+
+    distances d;
+    ranging->get_distances_to_anchors(&d);
 
     return EXIT_SUCCESS;
 }

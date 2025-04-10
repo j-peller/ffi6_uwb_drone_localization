@@ -41,7 +41,21 @@ void DW1000::readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t len
     };
 
     uint8_t header_len = cmd.subindex ? (cmd.extended ? 3 : 2) : 1;
-    spi_transceive(header, header_len, data, length);
+    //spi_transceive(header, header_len, data, length);
+
+    SPI.beginTransaction(spiSettings);
+    digitalWrite(chip_select, LOW);
+    for(uint16_t i = 0; i < header_len; i++) {
+	    SPI.transfer(header[i]); // send header
+	}
+    for(uint16_t i = 0; i < length; i++) {
+		data[i] = SPI.transfer(0x00); // read values, write junk
+	}
+
+    delayMicroseconds(5);
+	digitalWrite(chip_select, HIGH);
+	SPI.endTransaction();
+    
     /*
     SPI.beginTransaction(spiSettings);
     digitalWrite(chip_select, LOW);
@@ -83,6 +97,46 @@ void DW1000::spi_transceive(uint8_t header[], uint8_t header_length, uint8_t dat
     }
 }
 
+void DW1000::loadLDECode()
+{
+    /* see 2.5.5.10 LDELOAD */
+    uint8_t otpctrl[OTP_CTRL_LEN] = {0};
+    uint8_t pmsc_ctrl0[PMSC_CTRL0_LEN] = {0};
+
+    readBytes(OTP_IF_ID, OTP_CTRL, otpctrl, OTP_CTRL_LEN);
+    readBytes(PMSC_ID, PMSC_CTRL0_OFFSET, pmsc_ctrl0, PMSC_CTRL0_LEN);
+
+    otpctrl[1] |= 1 << 7; /* LDELOAD Bit */
+    pmsc_ctrl0[0] = 0x01;
+    pmsc_ctrl0[0] = 0x03;
+
+    writeBytes(PMSC_ID, PMSC_CTRL0_OFFSET, pmsc_ctrl0, 2);
+    writeBytes(OTP_IF_ID, OTP_CTRL, otpctrl, OTP_CTRL_LEN);
+    delayMicroseconds(150);
+
+    pmsc_ctrl0[0] = 0x00;
+	pmsc_ctrl0[1] = 0x02;
+    writeBytes(PMSC_ID, PMSC_CTRL0_OFFSET, pmsc_ctrl0, 2);
+
+
+}
+
+void DW1000::setFrameLength(FrameLengthType frame_length)
+{
+    uint8_t sys_cfg[SYS_CFG_LEN] = {0};
+    readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, sys_cfg, SYS_CFG_LEN);
+    sys_cfg[2] &= ~(0x3); // reset PHR value
+    sys_cfg[2] |= frame_length; // update PHR value
+    writeBytes(SYS_CFG_ID, 0, sys_cfg, SYS_CFG_LEN);
+}
+
+void DW1000::enableInterrupts(enum InterruptTable table)
+{
+    uint32_t interrupts = 0;
+    interrupts = __builtin_bswap32(table); // swap to little endian decoding before writing as uint8_t array
+    writeBytes(SYS_MASK_ID, NO_SUB_ADDRESS, (uint8_t*)&interrupts, sizeof(InterruptTable));
+}
+
 void DW1000::writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t length)
 {
     /* Build SPI Transaction Header according to 2.2.1.2 p4 DW1000 User Manual */
@@ -102,7 +156,20 @@ void DW1000::writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t le
 
     /* do we have a 1,2 or 3 octet header? */
     uint8_t header_len = cmd.subindex ? (cmd.extended ? 3 : 2) : 1;
-    spi_transceive(header, header_len, data, length);
+    //spi_transceive(header, header_len, data, length);
+
+    SPI.beginTransaction(spiSettings);
+    digitalWrite(chip_select, LOW);
+    for(uint16_t i = 0; i < header_len; i++) {
+	    SPI.transfer(header[i]); // send header
+	}
+    for(uint16_t i = 0; i < length; i++) {
+		SPI.transfer(data[i]); // write values
+	}
+
+    delayMicroseconds(5);
+	digitalWrite(chip_select, HIGH);
+	SPI.endTransaction();
 
 }
 
@@ -131,4 +198,9 @@ void DW1000::handleInterrupt() {
 }
 void DW1000::idle() {
 
+}
+
+void DW1000::setDataRate(uint8_t rate)
+{
+    //TODO
 }

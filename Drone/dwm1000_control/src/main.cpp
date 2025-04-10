@@ -8,7 +8,7 @@
 int main() {
     dw1000_dev_instance_t device = {
         .spi_dev = "/dev/spidev0.0",
-        .spi_baudrate = 10000000, //< currently at 20MHz issues with test setup
+        .spi_baudrate = 20000000, //< currently at 20MHz issues with test setup (schlechte lötstellen)
         .spi_bits_per_word = 8,
         .spi_mode = SPI_MODE_0,
         .irq_pin = 17,
@@ -25,7 +25,7 @@ int main() {
         uint32_t id = 0;
         controller->get_device_id(&id);
         fprintf(stdout, "0x%08X\n", id);
-        usleep(500000);
+        usleep(200000);
     }
 
     return EXIT_SUCCESS;

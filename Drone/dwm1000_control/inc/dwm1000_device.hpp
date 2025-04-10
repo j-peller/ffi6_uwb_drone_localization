@@ -3,8 +3,8 @@
 #ifndef DWM1000_DEVICE_HPP
 #define DWM1000_DEVICE_HPP
 
-#include "dwm1000_ctrl.hpp"
-#include "dw1000_time.hpp"
+#include "../inc/dwm1000_ranging.hpp"
+#include "../inc/dw1000_time.hpp"
 
 
 /**

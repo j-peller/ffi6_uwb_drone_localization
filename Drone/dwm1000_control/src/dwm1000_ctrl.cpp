@@ -1,5 +1,4 @@
 #include "../inc/dwm1000_ctrl.hpp"
-#include "../inc/dw1000_time.hpp"
 
 #include <linux/spi/spidev.h>
 #include <fcntl.h>
@@ -242,10 +241,10 @@ dwm_com_error_t DWMController::poll_status_bit(uint64_t status_bit, uint64_t tim
             return ERROR;
         }
 
-    } while (*(uint64_t*)(sys_status) & (0x1ULL << status_bit));
+    } while (! (*(uint64_t*)(sys_status) & (0x1ULL << status_bit)) );
 
     /* clear status bit */
-    (*(uint64_t*)(sys_status)) |= (0x1ULL << status_bit);
+    (*(uint64_t*)(sys_status)) &= (0x1ULL << status_bit);
     writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, sys_status, SYS_STATUS_LEN);
 
     return SUCCESS;

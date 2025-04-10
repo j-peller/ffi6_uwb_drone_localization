@@ -4,17 +4,11 @@
 #define DW1000_TIME_HPP
 
 #include <stdint.h>
-#include "../inc/dwm1000_ranging.hpp"
 
 class DW1000Time {
+    friend class DWMRanging;
 
 public:
-    friend double DWMRanging::timestamps2distance(
-        DW1000Time& init_tx_ts, DW1000Time& ack_rx_ts, DW1000Time& fin_tx_ts,
-        DW1000Time& esp_init_rx_ts, DW1000Time& esp_resp_tx_ts,
-        DW1000Time& esp_fin_rx_ts
-    );
-
     DW1000Time();
     DW1000Time(uint64_t timeStamp);
     DW1000Time(uint8_t* timeStamp);

@@ -27,7 +27,6 @@ public:
     void add_anchor(DWM1000Device* anchor);
 
     /* Ranging */
-    
     dwm_com_error_t get_distances_to_anchors(distances* distances);
     dwm_com_error_t get_distance_to_anchor(
         uint16_t anchor_addr, double* distance);
@@ -37,13 +36,13 @@ public:
     dwm_com_error_t do_report_state(
         DW1000Time& esp_init_rx_ts, DW1000Time& esp_resp_tx_ts,
         DW1000Time& esp_fin_rx_ts
-    )
+    );
 
     static double timestamps2distance(
         DW1000Time& init_tx_ts, DW1000Time& ack_rx_ts, DW1000Time& fin_tx_ts,
         DW1000Time& esp_init_rx_ts, DW1000Time& esp_resp_tx_ts,
         DW1000Time& esp_fin_rx_ts
-    )
+    );
 
 private:
     static void waitOutError();

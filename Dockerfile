@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
     libeigen3-dev \
+    libgpiod-dev \
     git
 
 # Set working directory when copying files to include shared folder

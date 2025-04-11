@@ -8,6 +8,7 @@
 #include "dw1000_time.hpp"
 
 #include <stdint.h>
+#include <libgpiod.h>
 
 #define MAX_SPI_BAUDRATE 20000000 // 20MHz
 
@@ -20,8 +21,9 @@ typedef struct {
     int         spi_baudrate;
     uint8_t     spi_bits_per_word;
     uint8_t     spi_mode;
-    uint8_t     irq_pin;
-    uint8_t     rst_pin;
+    const char* gpiod_chip;
+    uint8_t     irq_gpio_pin;
+    uint8_t     rst_gpio_pin;
 } dw1000_dev_instance_t;
 
 
@@ -83,9 +85,11 @@ public:
     void reset();
 
     /* Setters */
+    void set_device_short_addr(uint16_t short_addr);
 
     /* Getters */
     void get_device_id(uint32_t* device_id);
+    void get_device_short_addr(uint16_t* short_addr);
     
 private:
     DWMController(int spi_fd, dw1000_dev_instance_t* device);
@@ -108,10 +112,9 @@ private:
     dw1000_dev_instance_t   _dev_instance;
     dw1000_dev_mode_t       _dev_mode;
 
-    /* GPIO Control */
-    //struct gpiod_chip*      _gpio_chip;
-    //struct gpiod_line*      _rst_line;
-    //struct gpiod_line*      _irq_line;
+    /* GPIO Control for Reset */
+    struct gpiod_chip*      _gpio_chip;
+    struct gpiod_line*      _rst_line;
 
     /* TX_FCTRL Register */
     uint32_t                _tx_fctrl;

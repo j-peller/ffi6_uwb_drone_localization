@@ -48,7 +48,7 @@ void DWMRanging::waitOutError()
     clock_gettime(CLOCK_MONOTONIC_RAW,  &start);
     do { 
         clock_gettime(CLOCK_MONOTONIC_RAW,  &now);
-    } while (timespec_delta_nanoseconds(&now, &start) < 2 * RX_TIMEOUT);
+    } while (timespec_delta_nanoseconds(&now, &start) < (RX_RETRY * RX_TIMEOUT));
 }
 
 /**
@@ -99,12 +99,12 @@ dwm_com_error_t DWMRanging::do_init_state(DW1000Time& init_tx_ts, uint16_t ancho
             .srcAddr = { MASTER & 0xff, MASTER >> 8 }
         },
         .payload = { .init = (twr_init_message_t) {
-            .type = (uint8_t) twr_msg_type_t::TWR_MSG_TYPE_POLL,
+            .type = twr_msg_type_t::TWR_MSG_TYPE_POLL,
             .anchorShortAddr = {anchor_addr & 0xff, anchor_addr >> 8},
             .responseDelay = 0x00
         }}
     };
-    _controller->write_transmission_data((uint8_t*)&init_msg, (uint8_t) sizeof(twr_message_t));
+    _controller->write_transmission_data((uint8_t*)&init_msg, sizeof(twr_message_t));
     _controller->start_transmission();
     
     // poll and check for error
@@ -167,7 +167,7 @@ dwm_com_error_t DWMRanging::do_final_state(DW1000Time& fin_tx_ts, uint16_t ancho
             .destAddr = { anchor_addr & 0xff, anchor_addr >> 8 },
             .srcAddr = { MASTER & 0xff, MASTER >> 8 }
         },
-        .payload = { .final = {.type = (uint8_t) twr_msg_type_t::TWR_MSG_TYPE_FINAL,}}
+        .payload = { .final = {.type = twr_msg_type_t::TWR_MSG_TYPE_FINAL,}}
     };
     _controller->write_transmission_data((uint8_t*)&final_msg, sizeof(twr_message_t));
     _controller->start_transmission();
@@ -207,8 +207,7 @@ dwm_com_error_t DWMRanging::do_report_state(DW1000Time& esp_init_rx_ts, DW1000Ti
     }
     rprt_return = (twr_message_t*) _controller->read_received_data(&rprt_len);
     
-    if (rprt_return->payload.report.type 
-            != twr_msg_type_t::TWR_MSG_TYPE_REPORT) {
+    if (rprt_return->payload.report.type != twr_msg_type_t::TWR_MSG_TYPE_REPORT) {
         waitOutError();
         return dwm_com_error_t::ERROR;
     }

@@ -8,6 +8,7 @@
 
 #define DW1000_TIMEOUT  1e6     //< In Nanoseconds (1ms)
 #define RX_TIMEOUT      1e8     //< In Nanoseconds (100ms)
+#define RX_RETRY        2       //< Retrys
 
 typedef enum : uint8_t {
     SUCCESS = 0x00,

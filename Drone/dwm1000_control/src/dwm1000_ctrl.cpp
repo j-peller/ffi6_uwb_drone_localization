@@ -59,7 +59,31 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
         return NULL;
     }
 
-    /* TODO: Setup GPIO */
+    /* Setup GPIO */
+    instance->_gpio_chip = gpiod_chip_open(device->gpiod_chip);
+    if (!instance->_gpio_chip) {
+        perror("Failed to open GPIO Chip");
+        delete instance;
+        close(fd);
+        return NULL;
+    }
+
+    instance->_rst_line = gpiod_chip_get_line(instance->_gpio_chip, device->rst_gpio_pin);
+    if (!instance->_rst_line) {
+        perror("Failed to open GPIO Pin");
+        gpiod_chip_close(instance->_gpio_chip);
+        delete instance;
+        close(fd);
+        return NULL;
+    }
+
+    if (gpiod_line_request_output(instance->_rst_line, "DWM1000Reset", 0) < 0) {
+        perror("Failed to set GPIO Pin to OUTPUT");
+        gpiod_chip_close(instance->_gpio_chip);
+        delete instance;
+        close(fd);
+        return NULL;
+    }
 
     /* Test SPI Connection to DWM1000 */
     uint32_t device_id = 0;
@@ -71,8 +95,21 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
         close(fd);
         return NULL;
     }
-
+    
     fprintf(stdout, "DWM1000 detected with ID: 0x%08X\n", device_id);
+
+    /* Test SPI Write - and Read Back Value */
+    instance->set_device_short_addr(MASTER);
+    uint16_t read_back = 0;
+    instance->get_device_short_addr(&read_back);
+    if (read_back != MASTER) {
+        fprintf(stderr, "DWM1000 returned invalid Short Address: 0x%04X\n", read_back);
+        perror("DWM1000 not detected or SPI not working");
+        delete instance;
+        close(fd);
+        return NULL;
+    }
+
 
     return instance;
 }
@@ -266,6 +303,15 @@ void DWMController::reset()
 
 
 /**
+ * 
+ */
+void DWMController::set_device_short_addr(uint16_t short_addr)
+{
+    writeBytes(PANADR_ID, PANADR_SHORT_ADDR_OFFSET, (uint8_t*)&short_addr, sizeof(uint16_t));
+}
+
+
+/**
  * @brief Get the device ID of the DWM1000 -- Read from the DEV_ID register = 0x00
  * @param device_id Pointer to store the device ID
  * 
@@ -275,6 +321,15 @@ void DWMController::get_device_id(uint32_t* device_id)
     uint8_t data[DEV_ID_LEN] = {0};
     readBytes(DEV_ID_ID, NO_SUB_ADDRESS, data, DEV_ID_LEN);
     *device_id = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0];
+}
+
+
+/**
+ * 
+ */
+void DWMController::get_device_short_addr(uint16_t* short_addr)
+{
+    readBytes(PANADR_ID, PANADR_SHORT_ADDR_OFFSET, (uint8_t*)short_addr, sizeof(uint16_t));
 }
 
 

@@ -144,8 +144,13 @@ dwm_com_error_t DWMController::do_init_config()
     uint32_t sys_cfg = 0;
     readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
 
-    sys_cfg |= SYS_CFG_FFE;     //< Enable Frame Filtering
-    sys_cfg |= SYS_CFG_FFAD;    //< Allow Data Frame
+    sys_cfg |= SYS_CFG_FFE;         //< Enable Frame Filtering. This requires SHORT_ADDR to be set beforehand.
+    sys_cfg |= SYS_CFG_FFAD;        //< Allow Data Frame
+    sys_cfg |= SYS_CFG_PHR_MODE_00; //< Standard Frame mode IEEE 802.15.4 compliant
+
+    /* Transmit Frame Control Part */
+    uint8_t tx_fctrl[TX_FCTRL_LEN] = {0};
+    readBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&tx_fctrl, TX_FCTRL_LEN);
 
 
 
@@ -177,8 +182,10 @@ void DWMController::write_transmission_data(uint8_t* data, uint8_t len)
     writeBytes(TX_BUFFER_ID, NO_SUB_ADDRESS, data, len);
 
     /* Set Transmit Frame Length accordingly */
-    this->_tx_fctrl &= ~TX_FCTRL_TFLEN_MASK;
-    this->_tx_fctrl |= len;
+    uint8_t tx_fctrl[TX_FCTRL_LEN] = {0};
+    readBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, tx_fctrl, TX_FCTRL_LEN);
+    tx_fctrl[0] = len ; //< 7 bit TFLEN
+    writeBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&tx_fctrl, TX_FCTRL_LEN);
 }
 
 
@@ -196,6 +203,7 @@ void DWMController::start_transmission() {
     /* currently not required to keep track of DW1000 operating mode */
     //this->_dev_mode = TX_MODE;
 
+    /* WAIT4RESP maybe an option here to enable the receiver immediatly after transmission completed */
     uint32_t sys_ctrl = SYS_CTRL_TXSTRT;
     writeBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_ctrl ,SYS_CTRL_LEN);
 }
@@ -384,9 +392,7 @@ void DWMController::set_device_short_addr(uint16_t short_addr)
  */
 void DWMController::get_device_id(uint32_t* device_id)
 {
-    uint8_t data[DEV_ID_LEN] = {0};
-    readBytes(DEV_ID_ID, NO_SUB_ADDRESS, data, DEV_ID_LEN);
-    *device_id = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0];
+    readBytes(DEV_ID_ID, NO_SUB_ADDRESS, (uint8_t*)device_id, DEV_ID_LEN);
 }
 
 
@@ -499,17 +505,6 @@ void DWMController::writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint
         perror("Failed to write to SPI device");
         return;
     }
-}
-
-
-/**
- * 
- */
-void DWMController::setupTXFrameControl() {
-    uint32_t tx_fctrl = 0;
-
-    /* Set the TX frame control register */
-    writeBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&tx_fctrl ,TX_FCTRL_LEN);
 }
 
 

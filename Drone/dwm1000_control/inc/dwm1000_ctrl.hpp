@@ -103,10 +103,7 @@ private:
     void readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t len);
     void writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t len);
 
-    /* Setup Transmission Frame Control */
-    void setupTXFrameControl();
-
-    /**/
+    /* */
     uint8_t getReceivedDataLength();
     
     /* DW1000 Mode Control */

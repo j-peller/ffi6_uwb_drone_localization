@@ -21,8 +21,6 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    controller->loadLDECode();
-
     uint16_t i = 0;
     for (;;) {
         uint16_t shorta = 0;

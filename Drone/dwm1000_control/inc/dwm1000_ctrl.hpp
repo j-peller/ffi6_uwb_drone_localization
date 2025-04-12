@@ -8,7 +8,7 @@
 #include "dw1000_time.hpp"
 
 #include <stdint.h>
-#include <libgpiod.h>
+#include <gpiod.h>
 
 #define MAX_SPI_BAUDRATE 20000000 // 20MHz
 
@@ -59,6 +59,10 @@ public:
     ~DWMController();
 
     /* DW1000 Configuration */
+    dwm_com_error_t do_init_config();
+    void standard_frame_length();
+    void frame_filtering_enable(); //< FFEN
+    void frame_filtering_allow_data_frame(); //< FFAD 
 
     /* Transmission */
     void write_transmission_data(uint8_t* data, uint8_t len);
@@ -83,6 +87,7 @@ public:
 
     /* Reset */
     void reset();
+    void soft_reset();
 
     /* Setters */
     void set_device_short_addr(uint16_t short_addr);
@@ -106,6 +111,10 @@ private:
     
     /* DW1000 Mode Control */
     void forceIdle();
+
+    /* etc */
+    void loadLDECode();
+
 
 private:
     int                     _spi_fd;

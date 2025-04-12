@@ -1,4 +1,5 @@
 #include "../inc/dwm1000_ctrl.hpp"
+#include "../../../shared/inc/anchor_addresses.hpp"
 
 #include <linux/spi/spidev.h>
 #include <fcntl.h>
@@ -110,6 +111,8 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
         return NULL;
     }
 
+    fprintf(stdout, "DWM1000 Setup successful with Short Address: 0x%04X\n", read_back);
+
 
     return instance;
 }
@@ -124,6 +127,27 @@ DWMController::DWMController(int spi_fd, dw1000_dev_instance_t* device)
 
 DWMController::~DWMController()
 {
+    /* Close GPIO Chip */
+    if (_gpio_chip) {
+        gpiod_chip_close(_gpio_chip);
+    }
+
+}
+
+
+/**
+ * 
+ */
+dwm_com_error_t DWMController::do_init_config()
+{
+    /* Sys Config Part */
+    uint32_t sys_cfg = 0;
+    readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
+
+    sys_cfg |= SYS_CFG_FFE;     //< Enable Frame Filtering
+    sys_cfg |= SYS_CFG_FFAD;    //< Allow Data Frame
+
+
 
 }
 
@@ -289,17 +313,59 @@ dwm_com_error_t DWMController::poll_status_bit(uint64_t status_bit, uint64_t tim
 
 
 /**
- * @brief Reset the DWM1000 device
+ * @brief External hard reset of the DWM1000 device
  * 
  */
 void DWMController::reset()
 {
-    /* TODO */
+    /*  */
+    gpiod_line_request_output(this->_rst_line, "DWM1000Reset", 0);
 
+    /* */
+    gpiod_line_set_value(this->_rst_line, 0);
+
+    /* Reset Pin should be manually driven low for at least 50ns to ensure correct reset operation */
+    busywait_nanoseconds(1000);
+
+    /* */
+    gpiod_line_request_input(this->_rst_line, "DWM1000Reset");
+
+    /* busywait for 10ms */
+    busywait_nanoseconds(10000000);
 
     /* Force the DWM1000 into idle mode */
     this->forceIdle();
 }
+
+
+/**
+ * @brief API to do softreset on dw1000 by writing data into PMSC_CTRL0_SOFTRESET_OFFSET.
+ */
+ void DWMController::soft_reset() 
+ {
+    /* Set SYSCLKS to 01 */
+    uint8_t reg = 0;
+    readBytes(PMSC_ID, PMSC_CTRL0_OFFSET, &reg, sizeof(uint8_t));
+
+    /* clear bits 0:1 */
+    reg &= ~(0x03);
+
+    /* set SYSCLKS to 19.2MHz as per Documentation: p191 DW1000 User Manual */
+    reg |= PMSC_CTRL0_SYSCLKS_19M;
+
+    writeBytes(PMSC_ID, PMSC_CTRL0_OFFSET, &reg, sizeof(uint8_t));
+
+    /* Reset HIF, TX, RX and PMSC */
+    reg = PMSC_CTRL0_RESET_ALL;
+    writeBytes(PMSC_ID, PMSC_CTRL0_SOFTRESET_OFFSET, &reg, sizeof(uint8_t));
+
+    /* DW1000 needs a 10us sleep to let clk PLL lock after reset */
+    busywait_nanoseconds(10000);
+
+    /* Finish reset */
+    reg = PMSC_CTRL0_RESET_CLEAR; 
+    writeBytes(PMSC_ID, PMSC_CTRL0_SOFTRESET_OFFSET, &reg, sizeof(uint8_t));
+ }
 
 
 /**
@@ -477,4 +543,36 @@ void DWMController::forceIdle() {
     this->_dev_mode = IDLE_MODE;
 
     writeBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_ctrl ,SYS_CTRL_LEN);
+}
+
+
+/**
+ * 
+ */
+void DWMController::loadLDECode() 
+{
+    uint8_t otp_ctrl[OTP_CTRL_LEN]      = {0};
+    uint8_t pmsc_ctrl[PMSC_CTRL0_LEN]   = {0};
+
+    /* Get current register values */
+    readBytes(OTP_IF_ID, OTP_CTRL, otp_ctrl, OTP_CTRL_LEN);
+    readBytes(PMSC_ID, PMSC_CTRL0_OFFSET, pmsc_ctrl, PMSC_CTRL0_LEN);
+
+    /* Set value according to 2.5.5.1.0 DW1000 User Manual: Step L-1 */
+    *(uint32_t*)pmsc_ctrl &= ~(0x0000FFFF);
+    *(uint32_t*)pmsc_ctrl |= 0x00000301;
+    writeBytes(PMSC_ID, PMSC_CTRL0_OFFSET, pmsc_ctrl, PMSC_CTRL0_LEN);
+    
+    /* Set value according to 2.5.5.1.0 DW1000 User Manual: Step L-2 */
+    *(uint16_t*)otp_ctrl &= ~(0xFFFF);;
+    *(uint16_t*)otp_ctrl |= OTP_CTRL_LDELOAD;
+    writeBytes(OTP_IF_ID, OTP_CTRL, otp_ctrl, OTP_CTRL_LEN);
+
+    /* Wait for 150 microseconds */
+    busywait_nanoseconds(150000);
+
+    /* Set value according to 2.5.5.1.0 DW1000 User Manual: Step L-3 */
+    *(uint32_t*)pmsc_ctrl &= ~(0x0000FFFF);
+    *(uint32_t*)pmsc_ctrl |= 0x00000200;
+    writeBytes(PMSC_ID, PMSC_CTRL0_OFFSET, pmsc_ctrl, PMSC_CTRL0_LEN);
 }

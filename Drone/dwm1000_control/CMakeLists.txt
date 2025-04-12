@@ -31,7 +31,7 @@ find_package(Eigen3 3.4 REQUIRED)
 add_executable(${PROJECT_NAME} ${SOURCES} ${COORDS_SOURCES})
 
 # Link the Eigen3 library
-target_link_libraries(${PROJECT_NAME} Eigen3::Eigen)
+target_link_libraries(${PROJECT_NAME} Eigen3::Eigen gpiod)
 
 
 

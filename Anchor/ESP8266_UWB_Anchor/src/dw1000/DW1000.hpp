@@ -22,7 +22,7 @@ enum FrameLengthType {
 };
 
 enum InterruptTable : uint32_t{
-    INTERRUPT_ON_TX = 1 << 6,               // transmit frame sent event
+    INTERRUPT_ON_TX = SYS_STATUS_TXFRS,               // transmit frame sent event
     INTERRUPT_ON_RX = 1 << 12,              // receiver data frame ready event
     INTERRUPT_ON_RX_CRC_GOOD = 1 << 13,     // receiver FCS good event
     INTERRUPT_ON_RX_CRC_BAD = 1 << 14,      // receiver FCS error event
@@ -37,8 +37,6 @@ enum InterruptTable : uint32_t{
                     INTERRUPT_ON_RX_FAIL_LDEERR | INTERRUPT_ON_RX_FAIL_PHE | INTERRUPT_ON_RX_FAIL_RFSL | INTERRUPT_ON_RX_TIMEOUT |
                     INTERRUPT_ON_LDE_DONE | INTERRUPT_ON_AUTOMATIC_ACK
 };
-
-
 
     /* SPI Transaction Header operation modes  */
 const uint8_t    READ        = 0x00;
@@ -56,10 +54,13 @@ class DW1000 {
         void handleInterrupt();
         void idle();
         void readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t length);
+        void readBytes(uint8_t reg, uint16_t offset, uint32_t* data);
         void writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t length);
+        void writeBytes(uint8_t reg, uint16_t offset, uint32_t data);
         void readNetworkIdAndDeviceAddress(uint8_t* data);
         void writeNetworkIdAndDeviceAddress(uint8_t* data);
         void setDataRate(uint8_t rate);
+        void transmit(uint8_t data[], uint16_t length);
 
         /*  Responsible for loading Leading Edge Detection microcode from ROM to RAM as described in 7.2.46.3 LDELOAD
             Must be run before receiver mode is enabled!
@@ -67,6 +68,7 @@ class DW1000 {
         void loadLDECode(); 
         void setFrameLength(FrameLengthType frame_length);
         void enableInterrupts(enum InterruptTable table);
+        void soft_reset();
 
 
         void addLogger(Logger* logger);
@@ -76,5 +78,6 @@ class DW1000 {
         DeviceMode current_mode = IDLE;
         SPISettings spiSettings = SPISettings(20000000L, MSBFIRST, SPI_MODE0);
         void spi_transceive(uint8_t header[], uint8_t header_length, uint8_t data[], uint16_t data_length);
+        void clearStatusRegister();
         Logger* logger = nullptr;
 };

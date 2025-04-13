@@ -21,6 +21,9 @@ int main() {
         return EXIT_FAILURE;
     }
 
+    controller->do_init_config();
+    usleep(1000000);
+
     uint16_t i = 0;
     for (;;) {
         uint16_t shorta = 0;

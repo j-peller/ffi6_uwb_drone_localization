@@ -136,7 +136,8 @@ DWMController::~DWMController()
 
 
 /**
- * 
+ * The default configuration may be summarised as being channel 5, preamble code 4 and mode 2
+ * Mode 2: Preamble 128 Symbols, PRF 16 MHz, Data Length 12 Bytes, Packet Duration 152us 
  */
 dwm_com_error_t DWMController::do_init_config()
 {
@@ -148,12 +149,68 @@ dwm_com_error_t DWMController::do_init_config()
     sys_cfg |= SYS_CFG_FFAD;        //< Allow Data Frame
     sys_cfg |= SYS_CFG_PHR_MODE_00; //< Standard Frame mode IEEE 802.15.4 compliant
 
-    /* Transmit Frame Control Part */
-    uint8_t tx_fctrl[TX_FCTRL_LEN] = {0};
+    writeBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
+
+    /**
+     * Required Configuration for Transmitter on Channel 5
+     * Following configuration is done:
+     *  - TX Channel: 5 (default)
+     *  - TX Preamble Code: 9
+     *  - TX PRF: 64 MHz
+     *  - TX Data Rate: 850 kbps
+     *  - TX Preamble Length: 1024 symbols
+     */
+    uint32_t rf_txctrl_val = RF_TXCTRL_CH5;     //< See DW1000 User Manual Page 148 Table 38
+    writeBytes(RF_CONF_ID, RF_TXCTRL_OFFSET, (uint8_t*)&rf_txctrl_val, sizeof(uint32_t));
+
+    uint8_t tc_pgdelay_val = TC_PGDELAY_CH5;    //< See DW1000 User Manual Page 155 Table 40 
+    writeBytes(TX_CAL_ID, TC_PGDELAY_OFFSET, (uint8_t*)&tc_pgdelay_val, sizeof(uint8_t));
+
+    uint32_t fs_pllcfg_val = FS_PLLCFG_CH5;     //< See DW1000 User Manual Page 157 Table 43
+    writeBytes(FS_CTRL_ID, FS_PLLCFG_OFFSET, (uint8_t*)&fs_pllcfg_val, sizeof(uint32_t));
+
+    /* A longer preamble gives improved range performance and better first path time of arrival information */
+    /* In our case we go with 850 kbps and a preamble sequence of 1024 (its supported by the standard) see page 206 table 57 */
+    uint64_t tx_fctrl = 0;
     readBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&tx_fctrl, TX_FCTRL_LEN);
 
+    tx_fctrl &= ~TX_FCTRL_TXBR_MASK;    //< Clear current setting 
+    tx_fctrl |= TX_FCTRL_TXBR_850k;     //< Set 850 kbps data rate
 
+    tx_fctrl &= ~TX_FCTRL_TXPRF_MASK;   //< Clear current setting
+    tx_fctrl |= TX_FCTRL_TXPRF_64M;     //< Set 64 MHz PRF for improved range
 
+    tx_fctrl &= ~TX_FCTRL_TXPSR_MASK;   //< Clear current setting
+    tx_fctrl |= TX_FCTRL_TXPSR_PE_1024;  //< Set 1024 preamble symbols 
+
+    writeBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&tx_fctrl, TX_FCTRL_LEN);
+
+    /**
+     * Required Configuration for Receiver on Channel 5
+     * Following configuration is done:
+     * - RX Channel: 5 (default)
+     * - RX Preamble Code: 9
+     * - RX PRF: 64 MHz
+     */
+    uint8_t rf_rxctrlh_val = RF_RXCTRLH_NBW;    //< See DW1000 User Manual Page 148 Table 37
+    writeBytes(RF_CONF_ID, RF_RXCTRLH_OFFSET, (uint8_t*)&rf_rxctrlh_val, sizeof(uint8_t));
+
+    /* Channel Control Settings for both Receiver and Transmitter */
+    uint32_t chan_ctrl = 0;
+    readBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&chan_ctrl, CHAN_CTRL_LEN);
+
+    chan_ctrl &= ~CHAN_CTRL_RXFPRF_MASK;            //< Clear current RX PRF
+    chan_ctrl |= CHAN_CTRL_RXFPRF_64;               //< Set RX PRF to 64 MHz to match Transmitter
+
+    chan_ctrl &= ~CHAN_CTRL_TX_PCOD_MASK;           //< Clear current Preamble Code for Transceiver
+    chan_ctrl |= (0x9) << CHAN_CTRL_TX_PCOD_SHIFT;  //< Set Preamble Code 9. Supported according to page 214 table 61
+
+    chan_ctrl &= ~CHAN_CTRL_RX_PCOD_MASK;           //< Clear current Preamble Code for Receiver
+    chan_ctrl |= (0x9) << CHAN_CTRL_RX_PCOD_SHIFT;  //< Set Preamble Code 9. Supported according to page 214 table 61
+
+    writeBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&chan_ctrl, CHAN_CTRL_LEN);
+
+    return SUCCESS;
 }
 
 

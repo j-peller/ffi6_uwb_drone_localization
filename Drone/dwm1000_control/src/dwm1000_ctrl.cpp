@@ -1,5 +1,6 @@
 #include "../inc/dwm1000_ctrl.hpp"
 #include "../../../shared/inc/anchor_addresses.hpp"
+#include "../../../shared/inc/twr_dw1000_frame_spec.hpp"
 
 #include <linux/spi/spidev.h>
 #include <fcntl.h>
@@ -136,11 +137,12 @@ DWMController::~DWMController()
 
 
 /**
- * The default configuration may be summarised as being channel 5, preamble code 4 and mode 2
- * Mode 2: Preamble 128 Symbols, PRF 16 MHz, Data Length 12 Bytes, Packet Duration 152us 
+ * @brief Initialize the DWM1000 device with the required configuration
  */
 dwm_com_error_t DWMController::do_init_config()
 {
+    loadLDECode();
+
     /* Sys Config Part */
     uint32_t sys_cfg = 0;
     readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
@@ -163,7 +165,7 @@ dwm_com_error_t DWMController::do_init_config()
     uint32_t rf_txctrl_val = RF_TXCTRL_CH5;     //< See DW1000 User Manual Page 148 Table 38
     writeBytes(RF_CONF_ID, RF_TXCTRL_OFFSET, (uint8_t*)&rf_txctrl_val, sizeof(uint32_t));
 
-    uint8_t tc_pgdelay_val = TC_PGDELAY_CH5;    //< See DW1000 User Manual Page 155 Table 40 
+    uint8_t tc_pgdelay_val = 0xB5;              //< See DW1000 User Manual Page 155 Table 40 
     writeBytes(TX_CAL_ID, TC_PGDELAY_OFFSET, (uint8_t*)&tc_pgdelay_val, sizeof(uint8_t));
 
     uint32_t fs_pllcfg_val = FS_PLLCFG_CH5;     //< See DW1000 User Manual Page 157 Table 43
@@ -181,7 +183,8 @@ dwm_com_error_t DWMController::do_init_config()
     tx_fctrl |= TX_FCTRL_TXPRF_64M;     //< Set 64 MHz PRF for improved range
 
     tx_fctrl &= ~TX_FCTRL_TXPSR_MASK;   //< Clear current setting
-    tx_fctrl |= TX_FCTRL_TXPSR_PE_1024;  //< Set 1024 preamble symbols 
+    tx_fctrl &= ~TX_FCTRL_TXPSR_PE_MASK; //< Clear Preamble Extension flags see table 16 page 71
+    tx_fctrl |= TX_FCTRL_TXPSR_PE_1024; //< Set 1024 preamble symbols 
 
     writeBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&tx_fctrl, TX_FCTRL_LEN);
 
@@ -209,6 +212,51 @@ dwm_com_error_t DWMController::do_init_config()
     chan_ctrl |= (0x9) << CHAN_CTRL_RX_PCOD_SHIFT;  //< Set Preamble Code 9. Supported according to page 214 table 61
 
     writeBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&chan_ctrl, CHAN_CTRL_LEN);
+
+    /**
+     * Default configurations that should be modified according to Section 2.5.5 page 17 
+     */
+    uint16_t drx_tune0b = DRX_TUNE0b_850K_STD;      //< See DW1000 User Manual Page 139 Table 30 - currently we use STD SFD
+    writeBytes(DRX_CONF_ID, DRX_TUNE0b_OFFSET, (uint8_t*)&drx_tune0b, sizeof(uint16_t));
+
+    uint16_t drx_tune1a = DRX_TUNE1a_PRF64;         //< See DW1000 User Manual Page 141 Table 31
+    writeBytes(DRX_CONF_ID, DRX_TUNE1a_OFFSET, (uint8_t*)&drx_tune1a, sizeof(uint16_t));
+
+    uint16_t drx_tune1b = DRX_TUNE1b_850K_6M8;      //< See DW1000 User Manual Page 141 Table 32
+    writeBytes(DRX_CONF_ID, DRX_TUNE1b_OFFSET, (uint8_t*)&drx_tune1b, sizeof(uint16_t));
+
+    /* we have an expected preamble length of 1024 and run 64MHz PRF: Recommended PAC size = 32 see Table 6 on page 26 */
+    uint16_t drx_tune2 = DRX_TUNE2_PRF64_PAC32;      //< According to Table 33 page 142
+    writeBytes(DRX_CONF_ID, DRX_TUNE2_OFFSET, (uint8_t*)&drx_tune2, sizeof(uint16_t));
+
+    uint16_t agc_tune1 = AGC_TUNE1_64M;         //< See DW1000 User Manual Page 119 Table 24
+    writeBytes(AGC_CTRL_ID, AGC_TUNE1_OFFSET, (uint8_t*)&agc_tune1, sizeof(uint16_t));
+
+    uint32_t agc_tune2 = AGC_TUNE2_VAL;         //< See DW1000 User Manual Page 119 Table 25
+    writeBytes(AGC_CTRL_ID, AGC_TUNE2_OFFSET, (uint8_t*)&agc_tune2, sizeof(uint32_t));
+
+    uint8_t lde_cfg1 = 0;
+    readBytes(LDE_IF_ID, LDE_CFG1_OFFSET, (uint8_t*)&lde_cfg1, sizeof(uint8_t));
+    lde_cfg1 &= ~LDE_CFG1_NSTDEV_MASK;  //< Clear current setting which is set to 0x0C
+    lde_cfg1 |= 0x0D;                   //< Set 0x0D as described in Section 2.5.5.4 for better performance
+    writeBytes(LDE_IF_ID, LDE_CFG1_OFFSET, (uint8_t*)&lde_cfg1, sizeof(uint8_t));
+
+    uint16_t lde_cfg2 = 0x0607;     //< See DW1000 User Manual Page 177 Table 50
+    writeBytes(LDE_IF_ID, LDE_CFG2_OFFSET, (uint8_t*)&lde_cfg2, sizeof(uint16_t));
+
+    uint32_t tx_power_val = 0x0E082848; //< See DW1000 User Manual Section 2.5.5.6 
+    writeBytes(TX_POWER_ID, NO_SUB_ADDRESS, (uint8_t*)&tx_power_val, sizeof(uint32_t));
+
+    uint8_t fs_plltune_val = FS_PLLTUNE_CH5; //< See DW1000 User Manual Page 158 Table 44
+    writeBytes(FS_CTRL_ID, FS_PLLTUNE_OFFSET, (uint8_t*)&fs_plltune_val, sizeof(uint8_t));
+
+    /* Procedure to load LDE Coad into ROM */
+    loadLDECode();
+
+    /* Load LDOTUNE_CAL value from OTP into LDOTUNE Register as described in Section 2.5.5.11 page 18*/
+    uint64_t ldotune_cal_val = 0;
+    readBytesOTP(0x0004, (uint8_t*)&ldotune_cal_val, sizeof(uint64_t));
+    writeBytes(RF_CONF_ID, 0x30, (uint8_t*)&ldotune_cal_val, 5);
 
     return SUCCESS;
 }
@@ -241,7 +289,7 @@ void DWMController::write_transmission_data(uint8_t* data, uint8_t len)
     /* Set Transmit Frame Length accordingly */
     uint8_t tx_fctrl[TX_FCTRL_LEN] = {0};
     readBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, tx_fctrl, TX_FCTRL_LEN);
-    tx_fctrl[0] = len ; //< 7 bit TFLEN
+    tx_fctrl[0] |= len ; //< 7 bit TFLEN
     writeBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&tx_fctrl, TX_FCTRL_LEN);
 }
 
@@ -349,6 +397,8 @@ void DWMController::get_rx_timestamp(DW1000Time& time)
  * @brief Poll System Event Status Register for a specific status bit
  * @param status_bit The status bit to poll
  * @param timeout The timeout in nanoseconds
+ * 
+ * TODO: may not to continously poll for status bits via SPI. Consider using interrupts via GPIO pins
  */
 dwm_com_error_t DWMController::poll_status_bit(uint64_t status_bit, uint64_t timeout)
 {
@@ -463,6 +513,40 @@ void DWMController::get_device_short_addr(uint16_t* short_addr)
 
 
 /**
+ * 
+ */
+dwm_com_error_t DWMController::test_transmission_timestamp(DW1000Time& tx_time)
+{
+    twr_message_t init_msg = {
+        .header = (twr_frame_header_t) {
+            .frameCtrl = { 0x41, 0x88 },
+            .seqNum = 0x00,
+            .panID = { 0xCA, 0xDE },
+            .destAddr = { 0xff, 0xff },
+            .srcAddr = { MASTER & 0xff, MASTER >> 8 }
+        },
+        .payload = { .init = (twr_init_message_t) {
+            .type = twr_msg_type_t::TWR_MSG_TYPE_POLL,
+            .anchorShortAddr = { 0xff, 0xff},
+            .responseDelay = 0x00
+        }}
+    };
+    write_transmission_data((uint8_t*)&init_msg, sizeof(twr_message_t));
+    start_transmission();
+    
+    // poll and check for error
+    dwm_com_error_t tx_state = poll_tx_status();
+    if (tx_state == dwm_com_error_t::ERROR) {
+        return dwm_com_error_t::ERROR;
+    }
+    
+    get_tx_timestamp(tx_time);
+
+    return dwm_com_error_t::SUCCESS;
+}
+
+
+/**
  * @brief Read data from the DWM1000 device
  * 
  * @param reg The register address to read from
@@ -562,6 +646,40 @@ void DWMController::writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint
         perror("Failed to write to SPI device");
         return;
     }
+}
+
+
+/**
+ * @brief Read data from the OTP memory of the DWM1000
+ */
+void DWMController::readBytesOTP(uint16_t addr, uint8_t* data, uint32_t len)
+{
+    for (uint32_t i = 0; i < (len / 4); i++) {
+        _readBytesOTP(addr + i, data + (i * sizeof(uint32_t)));
+    }
+}
+
+
+/**
+ * @brief OTP Data is always returned in 4 byte words.
+ */
+void DWMController::_readBytesOTP(uint16_t addr, uint8_t* data)
+{
+    uint16_t otp_addr = addr;
+    /* Write OTP Address for read */
+    writeBytes(OTP_IF_ID, OTP_CTRL, (uint8_t*)&otp_addr, sizeof(uint16_t));
+
+    /* Perform OTP Read - Manual read mode has to be set */
+    uint8_t otp_cmd = OTP_CTRL_OTPREAD | OTP_CTRL_OTPRDEN;
+    writeBytes(OTP_IF_ID, OTP_CTRL, (uint8_t*)&otp_cmd, sizeof(uint8_t));
+    otp_cmd = 0x0;
+    writeBytes(OTP_IF_ID, OTP_CTRL, (uint8_t*)&otp_cmd, sizeof(uint8_t));
+
+    /* Read data is available after 40ns */
+    busywait_nanoseconds(1000);
+
+    /* Read data from OTP */
+    readBytes(OTP_IF_ID, OTP_RDAT, data, sizeof(uint32_t));
 }
 
 

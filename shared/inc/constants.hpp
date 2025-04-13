@@ -6,7 +6,7 @@
 #include <stdint.h>	
 #include <time.h>
 
-#define DW1000_TIMEOUT  1e6     //< In Nanoseconds (1ms)
+#define DW1000_TIMEOUT  1e8     //< In Nanoseconds (100ms)
 #define RX_TIMEOUT      1e8     //< In Nanoseconds (100ms)
 #define RX_RETRY        2       //< Retrys
 

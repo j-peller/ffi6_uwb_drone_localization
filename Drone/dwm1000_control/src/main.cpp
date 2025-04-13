@@ -24,15 +24,22 @@ int main() {
     controller->do_init_config();
     usleep(1000000);
 
-    uint16_t i = 0;
-    for (;;) {
-        uint16_t shorta = 0;
-        controller->set_device_short_addr(i);
-        controller->get_device_short_addr(&shorta);
-        fprintf(stdout, "Short Address: 0x%04X\n", shorta);
-        i++;
-        usleep(1000000);
-    }
+    DW1000Time test1, test2;
+    controller->test_transmission_timestamp(test1);
+    controller->test_transmission_timestamp(test2);
+
+    DW1000Time delta = test2 - test1;
+    fprintf(stdout, "TX Timestamp: %llu\n", delta.get_timestamp());
+
+    //uint16_t i = 0;
+    //for (;;) {
+    //    uint16_t shorta = 0;
+    //    controller->set_device_short_addr(i);
+    //    controller->get_device_short_addr(&shorta);
+    //    fprintf(stdout, "Short Address: 0x%04X\n", shorta);
+    //    i++;
+    //    usleep(1000000);
+    //}
 
     //DWMRanging* ranging = new DWMRanging(controller);
     //if (ranging == NULL) {

@@ -60,9 +60,6 @@ public:
 
     /* DW1000 Configuration */
     dwm_com_error_t do_init_config();
-    void standard_frame_length();
-    void frame_filtering_enable(); //< FFEN
-    void frame_filtering_allow_data_frame(); //< FFAD 
 
     /* Transmission */
     void write_transmission_data(uint8_t* data, uint8_t len);
@@ -95,6 +92,9 @@ public:
     /* Getters */
     void get_device_id(uint32_t* device_id);
     void get_device_short_addr(uint16_t* short_addr);
+
+    /* Testing Functions */
+    dwm_com_error_t test_transmission_timestamp(DW1000Time& tx_time);
     
 private:
     DWMController(int spi_fd, dw1000_dev_instance_t* device);
@@ -102,6 +102,10 @@ private:
     /* Basic SPI Read and Write */
     void readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t len);
     void writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t len);
+
+    /* OTP Read and Write */
+    void readBytesOTP(uint16_t addr, uint8_t* data, uint32_t len);
+    void _readBytesOTP(uint16_t addr, uint8_t* data);
 
     /* */
     uint8_t getReceivedDataLength();

@@ -33,7 +33,7 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
     }
 
     // Set SPI speed
-    if (device->spi_baudrate <= 0 && device->spi_baudrate > MAX_SPI_BAUDRATE) {
+    if (device->spi_baudrate <= 0 && device->spi_baudrate > FAST_SPI) {
         perror("Invalid SPI baudrate");
         close(fd);
         return NULL;
@@ -120,9 +120,9 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
 
 
 DWMController::DWMController(int spi_fd, dw1000_dev_instance_t* device)
-    : _spi_fd(spi_fd), _dev_instance(*device)
+    : _spi_fd(spi_fd), _dev_instance(*device), _cur_spi_baud(device->spi_baudrate), _gpio_chip(NULL), _rst_line(NULL)
 {
-
+    spiSetBaud(device->spi_baudrate);
 }   
 
 
@@ -133,6 +133,10 @@ DWMController::~DWMController()
         gpiod_chip_close(_gpio_chip);
     }
 
+    if (_spi_fd >= 0) {
+        close(_spi_fd);
+    }
+
 }
 
 
@@ -141,8 +145,6 @@ DWMController::~DWMController()
  */
 dwm_com_error_t DWMController::do_init_config()
 {
-    loadLDECode();
-
     /* Sys Config Part */
     uint32_t sys_cfg = 0;
     readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
@@ -289,6 +291,7 @@ void DWMController::write_transmission_data(uint8_t* data, uint8_t len)
     /* Set Transmit Frame Length accordingly */
     uint8_t tx_fctrl[TX_FCTRL_LEN] = {0};
     readBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, tx_fctrl, TX_FCTRL_LEN);
+    tx_fctrl[0] &= ~TX_FCTRL_TFLEN_MASK; //< Clear current setting
     tx_fctrl[0] |= len ; //< 7 bit TFLEN
     writeBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&tx_fctrl, TX_FCTRL_LEN);
 }
@@ -412,15 +415,16 @@ dwm_com_error_t DWMController::poll_status_bit(uint64_t status_bit, uint64_t tim
         readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, sys_status, SYS_STATE_LEN);
         clock_gettime(CLOCK_MONOTONIC_RAW,  &now);
 
+        /* TODO: Do we wait long enough!? */
         if (timespec_delta_nanoseconds(&now, &start) > timeout) {
-            // fprintf(stderr, "Timeout waiting for status bit\n");
-            return ERROR;
+            fprintf(stderr, "Timeout waiting for status bit\n");
+            // return ERROR;
         }
 
-    } while (! (*(uint64_t*)(sys_status) & (0x1ULL << status_bit)) );
+    } while (! (*(uint64_t*)(sys_status) & (status_bit)) );
 
     /* clear status bit */
-    (*(uint64_t*)(sys_status)) &= (0x1ULL << status_bit);
+    (*(uint64_t*)(sys_status)) &= (status_bit);
     writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, sys_status, SYS_STATUS_LEN);
 
     return SUCCESS;
@@ -458,20 +462,11 @@ void DWMController::reset()
  */
  void DWMController::soft_reset() 
  {
-    /* Set SYSCLKS to 01 */
-    uint8_t reg = 0;
-    readBytes(PMSC_ID, PMSC_CTRL0_OFFSET, &reg, sizeof(uint8_t));
-
-    /* clear bits 0:1 */
-    reg &= ~(0x03);
-
     /* set SYSCLKS to 19.2MHz as per Documentation: p191 DW1000 User Manual */
-    reg |= PMSC_CTRL0_SYSCLKS_19M;
-
-    writeBytes(PMSC_ID, PMSC_CTRL0_OFFSET, &reg, sizeof(uint8_t));
+    setSysClockSource(XTI_CLOCK);
 
     /* Reset HIF, TX, RX and PMSC */
-    reg = PMSC_CTRL0_RESET_ALL;
+    uint8_t reg = PMSC_CTRL0_RESET_ALL;
     writeBytes(PMSC_ID, PMSC_CTRL0_SOFTRESET_OFFSET, &reg, sizeof(uint8_t));
 
     /* DW1000 needs a 10us sleep to let clk PLL lock after reset */
@@ -542,7 +537,7 @@ dwm_com_error_t DWMController::test_transmission_timestamp(DW1000Time& tx_time)
     
     get_tx_timestamp(tx_time);
 
-    return dwm_com_error_t::SUCCESS;
+    return SUCCESS;
 }
 
 
@@ -719,6 +714,40 @@ void DWMController::forceIdle() {
 /**
  * 
  */
+void DWMController::setSysClockSource(uint8_t source)
+{
+    uint32_t pmsc_ctrl = 0;
+    readBytes(PMSC_ID, PMSC_CTRL0_OFFSET, (uint8_t*)&pmsc_ctrl, PMSC_CTRL0_LEN);
+
+    switch (source)
+    {
+    case AUTO_CLOCK:
+        //spiSetBaud(FAST_SPI);
+        pmsc_ctrl &= ~(0x3UL); //< clear sysclk bits
+        pmsc_ctrl |= PMSC_CTRL0_SYSCLKS_AUTO; //< set sysclk to auto
+        break;
+    
+    case XTI_CLOCK:
+        //spiSetBaud(SLOW_SPI);
+        pmsc_ctrl &= ~(0x3UL); //< clear sysclk bits
+        pmsc_ctrl |= PMSC_CTRL0_SYSCLKS_19M; //< set sysclk to xti
+        break;
+
+    case PLL_CLOCK:
+        //spiSetBaud(FAST_SPI);
+        pmsc_ctrl &= ~(0x3UL); //< clear sysclk bits
+        pmsc_ctrl |= PMSC_CTRL0_SYSCLKS_125M; //< set sysclk to pll
+        break;
+    }
+
+    writeBytes(PMSC_ID, PMSC_CTRL0_OFFSET, (uint8_t*)&pmsc_ctrl, PMSC_CTRL0_LEN);
+    
+}
+
+
+/**
+ * 
+ */
 void DWMController::loadLDECode() 
 {
     uint8_t otp_ctrl[OTP_CTRL_LEN]      = {0};
@@ -745,4 +774,28 @@ void DWMController::loadLDECode()
     *(uint32_t*)pmsc_ctrl &= ~(0x0000FFFF);
     *(uint32_t*)pmsc_ctrl |= 0x00000200;
     writeBytes(PMSC_ID, PMSC_CTRL0_OFFSET, pmsc_ctrl, PMSC_CTRL0_LEN);
+}
+
+
+/**
+ * @brief helper function to set the SPI baudrate
+ * @param baudrate The baudrate to set
+ */
+dwm_com_error_t DWMController::spiSetBaud(uint32_t baudrate)
+{
+    if (baudrate <= SLOW_SPI && baudrate > FAST_SPI) {
+        perror("Invalid SPI baudrate");
+        return ERROR;
+    }
+
+    if (baudrate != _cur_spi_baud) {
+        uint32_t speed = baudrate;
+        if (ioctl(_spi_fd, SPI_IOC_WR_MAX_SPEED_HZ, &speed) < 0) {
+            perror("Failed to set SPI speed");
+            return ERROR;
+        }
+        _cur_spi_baud = baudrate;
+    }
+
+    return SUCCESS;
 }

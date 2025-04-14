@@ -10,7 +10,12 @@
 #include <stdint.h>
 #include <gpiod.h>
 
-#define MAX_SPI_BAUDRATE 20000000 // 20MHz
+#define FAST_SPI    20000000    //< 20MHz
+#define SLOW_SPI    2000000     //< 2MHz
+
+#define AUTO_CLOCK  0x00    //< Switch over to PLL Clock when ready
+#define XTI_CLOCK   0x01    //< 19.2 MHz Clock
+#define PLL_CLOCK   0x02    //< 125 MHz Clock
 
 
 /**
@@ -18,7 +23,7 @@
  */
 typedef struct {
     const char* spi_dev;
-    int         spi_baudrate;
+    uint32_t    spi_baudrate;
     uint8_t     spi_bits_per_word;
     uint8_t     spi_mode;
     const char* gpiod_chip;
@@ -96,6 +101,7 @@ public:
     /* Testing Functions */
     dwm_com_error_t test_transmission_timestamp(DW1000Time& tx_time);
     
+    
 private:
     DWMController(int spi_fd, dw1000_dev_instance_t* device);
 
@@ -113,21 +119,24 @@ private:
     /* DW1000 Mode Control */
     void forceIdle();
 
-    /* etc */
-    void loadLDECode();
+    /* DW1000 Clock Control */
+    void setSysClockSource(uint8_t source);
 
+    /* config procedures */
+    void loadLDECode();
+    
+    /* SPI helper */
+    dwm_com_error_t spiSetBaud(uint32_t baudrate);
 
 private:
     int                     _spi_fd;
+    uint32_t                _cur_spi_baud;
     dw1000_dev_instance_t   _dev_instance;
     dw1000_dev_mode_t       _dev_mode;
 
     /* GPIO Control for Reset */
     struct gpiod_chip*      _gpio_chip;
     struct gpiod_line*      _rst_line;
-
-    /* TX_FCTRL Register */
-    uint32_t                _tx_fctrl;
 
 protected:
     /* SPI Transaction Header operation modes  */

@@ -8,7 +8,7 @@
 int main() {
     dw1000_dev_instance_t device = {
         .spi_dev = "/dev/spidev0.0",
-        .spi_baudrate = 2000000, //< currently at 20MHz issues with test setup (schlechte lötstellen)
+        .spi_baudrate = SLOW_SPI, //< Start mit 2MHz clock and ramp up after init
         .spi_bits_per_word = 8,
         .spi_mode = SPI_MODE_0,
         .gpiod_chip = "/dev/gpiochip4",
@@ -24,22 +24,26 @@ int main() {
     controller->do_init_config();
     usleep(1000000);
 
-    DW1000Time test1, test2;
-    controller->test_transmission_timestamp(test1);
-    controller->test_transmission_timestamp(test2);
+    for (int i = 0; i < 10; i++) {
+        DW1000Time test1, test2;
+        controller->test_transmission_timestamp(test1);
+        controller->test_transmission_timestamp(test2);
 
-    DW1000Time delta = test2 - test1;
-    fprintf(stdout, "TX Timestamp: %llu\n", delta.get_timestamp());
+        DW1000Time delta = test2 - test1;
+        fprintf(stdout, "T1 Timestamp: %llu\n", test1.get_timestamp());
+        fprintf(stdout, "T2 Timestamp: %llu\n", test2.get_timestamp());
+        fprintf(stdout, "Delta Timestamp: %llu\n", delta.get_timestamp());
 
-    //uint16_t i = 0;
-    //for (;;) {
-    //    uint16_t shorta = 0;
-    //    controller->set_device_short_addr(i);
-    //    controller->get_device_short_addr(&shorta);
-    //    fprintf(stdout, "Short Address: 0x%04X\n", shorta);
-    //    i++;
-    //    usleep(1000000);
-    //}
+        usleep(1000000);
+    }
+
+    for (int i = 0; i < 10; i++) {
+        uint16_t shorta = 0;
+        controller->set_device_short_addr(i);
+        controller->get_device_short_addr(&shorta);
+        fprintf(stdout, "Short Address: 0x%04X\n", shorta);
+        usleep(1000000);
+    }
 
     //DWMRanging* ranging = new DWMRanging(controller);
     //if (ranging == NULL) {

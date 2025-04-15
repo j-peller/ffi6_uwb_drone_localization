@@ -417,6 +417,8 @@ dwm_com_error_t DWMController::poll_status_bit(uint64_t status_bit, uint64_t tim
 
         readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, sys_status, SYS_STATE_LEN);
         clock_gettime(CLOCK_MONOTONIC_RAW,  &now);
+        
+        busywait_nanoseconds(1000);
 
         /* TODO: Do we wait long enough!? */
         if (timespec_delta_nanoseconds(&now, &start) > timeout) {

@@ -80,11 +80,11 @@ public:
     dwm_com_error_t poll_status_bit(uint64_t status_bit, uint64_t timeout);
 
     inline dwm_com_error_t poll_tx_status() {
-        return poll_status_bit(SYS_STATUS_TXFRS, DW1000_TIMEOUT);
+        return poll_status_bit(SYS_STATUS_ALL_TX, DW1000_TIMEOUT);
     }
 
     inline dwm_com_error_t poll_rx_status() {
-        return poll_status_bit(SYS_STATUS_RXDFR, RX_TIMEOUT);
+        return poll_status_bit(SYS_STATUS_ALL_RX_GOOD, RX_TIMEOUT);
     }
 
     /* Reset */

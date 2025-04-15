@@ -100,6 +100,7 @@ public:
 
     /* Testing Functions */
     dwm_com_error_t test_transmission_timestamp(DW1000Time& tx_time);
+    dwm_com_error_t test_receiving_timestamp(DW1000Time& rx_time);
     
     
 private:
@@ -145,7 +146,6 @@ protected:
 
     /* If we just wanna read a normal register... */
     static const uint16_t    NO_SUB_ADDRESS    = 0x0000;
-
 };
 
 

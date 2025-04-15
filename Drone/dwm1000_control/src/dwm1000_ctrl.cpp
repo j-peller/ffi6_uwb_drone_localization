@@ -366,6 +366,9 @@ uint8_t* DWMController::read_received_data(uint8_t* n)
         return NULL;
     }
 
+    /* TODO: Check if FCS is good */
+
+    /* */
     uint8_t* rx_data = new uint8_t[len];
     if (rx_data == NULL) {
         fprintf(stderr, "Failed to allocate memory for received data\n");
@@ -401,7 +404,7 @@ void DWMController::get_rx_timestamp(DW1000Time& time)
  * @param status_bit The status bit to poll
  * @param timeout The timeout in nanoseconds
  * 
- * TODO: may not to continously poll for status bits via SPI. Consider using interrupts via GPIO pins
+ * TODO: may not continously poll for status bits via SPI. Consider using interrupts via GPIO pins
  */
 dwm_com_error_t DWMController::poll_status_bit(uint64_t status_bit, uint64_t timeout)
 {
@@ -417,15 +420,14 @@ dwm_com_error_t DWMController::poll_status_bit(uint64_t status_bit, uint64_t tim
 
         /* TODO: Do we wait long enough!? */
         if (timespec_delta_nanoseconds(&now, &start) > timeout) {
-            fprintf(stderr, "Timeout waiting for status bit\n");
+            //fprintf(stderr, "Timeout waiting for status bit\n");
             // return ERROR;
         }
 
     } while (! (*(uint64_t*)(sys_status) & (status_bit)) );
 
     /* clear status bit */
-    (*(uint64_t*)(sys_status)) &= (status_bit);
-    writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, sys_status, SYS_STATUS_LEN);
+    writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, (uint8_t*)&status_bit, SYS_STATUS_LEN);
 
     return SUCCESS;
 }
@@ -536,6 +538,54 @@ dwm_com_error_t DWMController::test_transmission_timestamp(DW1000Time& tx_time)
     }
     
     get_tx_timestamp(tx_time);
+
+    return SUCCESS;
+}
+
+
+/**
+ * 
+ */
+dwm_com_error_t DWMController::test_receiving_timestamp(DW1000Time& rx_time)
+{
+    twr_message_t* msg;
+    uint8_t ack_len;
+
+    start_receiving();
+    // poll and check for error
+    dwm_com_error_t rx_state = poll_rx_status();
+    if (rx_state == ERROR) {
+        return ERROR;
+    }
+    msg = (twr_message_t*) read_received_data(&ack_len);
+
+    if (msg == NULL) {
+        fprintf(stderr, "Failed to read received data\n");
+        return ERROR;
+    }
+
+    get_rx_timestamp(rx_time);
+
+    fprintf(stdout,
+        "TWR Message Frame:\n"
+        "  Frame Control     : 0x%02X 0x%02X\n"
+        "  Sequence Number   : 0x%02X\n"
+        "  PAN ID            : 0x%02X 0x%02X\n"
+        "  Destination Addr  : 0x%02X 0x%02X\n"
+        "  Source Addr       : 0x%02X 0x%02X\n"
+        "  Message Type      : 0x%02X\n"
+        "  Anchor Short Addr : 0x%02X 0x%02X\n",
+        msg->header.frameCtrl[0], msg->header.frameCtrl[1],
+        msg->header.seqNum,
+        msg->header.panID[0], msg->header.panID[1],
+        msg->header.destAddr[0], msg->header.destAddr[1],
+        msg->header.srcAddr[0], msg->header.srcAddr[1],
+        msg->payload.init.type,
+        msg->payload.init.anchorShortAddr[0], msg->payload.init.anchorShortAddr[1]
+    );
+
+    /* cleanup */
+    delete msg;
 
     return SUCCESS;
 }

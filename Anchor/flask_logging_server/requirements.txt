@@ -1,2 +1,4 @@
 Flask==2.2.3
 flask-sock==0.7.0
+Werkzeug==2.2.2
+flask-sock==0.7.0

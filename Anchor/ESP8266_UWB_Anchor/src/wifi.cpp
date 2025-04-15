@@ -70,12 +70,13 @@ bool WifiHandler::logData(const char* message)
         success = client.send(jsonString);
         if(success)
         {
-            Serial.println("Sent: " + jsonString);
+            //Serial.println("Sent: " + jsonString);
              // Nachrichten empfangen
-            if (client.available()) {
+             //TODO bad for interrupt, maybe do somewhere else!
+            /*if (client.available()) {
                 websockets::WebsocketsMessage message = client.readBlocking();
                 Serial.println("Server: " + message.data());
-            }
+            }*/
         }
 
 

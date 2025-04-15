@@ -144,7 +144,7 @@ void DW1000::setMode(Mode mode)
 void DW1000::initialize()
 {
     delay(5);
-    pinMode(this->irq, INPUT);
+    pinMode(this->irq, INPUT_PULLDOWN_16);
     SPI.begin();
     //attachInterrupt(digitalPinToInterrupt(irq), DW1000::handleInterrupt, RISING);
     attachInterruptArg(digitalPinToInterrupt(irq), dw1000_interrupt_handler, this, RISING); // TODO was rising
@@ -424,7 +424,7 @@ void DW1000::handleInterrupt()
 {
     uint32_t sys_status = 0;
     readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &sys_status);
-    if(logger!=nullptr) logger->output("Gotcha! %x", sys_status);
+    if(logger!=nullptr) logger->addBuffer("Gotcha! %x", sys_status);
     clearStatusRegister();
 }
 

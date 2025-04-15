@@ -39,7 +39,7 @@ void setup()
       InterruptTable::INTERRUPT_ALL | InterruptTable::INTERRUPT_ON_AUTOMATIC_ACK
     ) 
   );
-  //dw1000.loadLDECode();
+  dw1000.loadLDECode();
   dw1000.readBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, test1, 4);
   logger.output("TX_FCTRL_ID %x %x %x %x", test1[3], test1[2], test1[1], test1[0]);
 
@@ -55,7 +55,7 @@ void loop()
 {
   uint8_t devIDNetID[4] = { 0xAB, 0xAC, 0xFE, 0xAF }; /* AFFE - PAN | ACAB - ADDR*/
   //dw1000.writeNetworkIdAndDeviceAddress(devIDNetID);
-  //wifiHandler.loop(); /* Todo! Timeintensive right now*/
+  wifiHandler.loop(); /* Todo! Timeintensive right now*/
 
 
   uint8_t pmsc_ctrl0[PMSC_CTRL0_LEN] = {0};
@@ -65,11 +65,14 @@ void loop()
 
 
   char message[100];
-  //uint8_t devIDNetID[4] = { 0x34, 0x12, 0xCD, 0xAB };
+   //devIDNetID[4] = { 0x34, 0x12, 0xCD, (uint8_t) counter };
+   devIDNetID[0] = counter;
   //dw1000.writeNetworkIdAndDeviceAddress(devIDNetID);
   uint8_t data[4];
   logger.output(std::to_string(counter++).c_str());
   dw1000.getPrintableDeviceIdentifier(message);
+  dw1000.writeNetworkIdAndDeviceAddress(devIDNetID);
+
   dw1000.readNetworkIdAndDeviceAddress(data);
 
   uint8_t tx_message[2] = {0xFE, 0xAF};
@@ -82,6 +85,7 @@ void loop()
   uint32_t sys_status = 0;
   dw1000.readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &sys_status);
   logger.output("Gotcha not! %x", sys_status);
+  logger.outputBuffer();
 
   digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
 }

@@ -19,3 +19,30 @@ const void Logger::output(const char* message, ...)
     Serial.println(buffer);
     this->wifiHandler->logData(buffer);
 }
+
+const void Logger::addBuffer(const char* message, ...)
+{
+    if(next_free_buffer < MAX_MESSAGES-1) {
+    
+    char buffer[MAX_MESSAGE_LENGTH] = {0};
+
+    va_list args;
+    va_start(args, message);
+    vsnprintf(buffer, MAX_MESSAGE_LENGTH, message, args);
+    va_end(args);
+
+    strncpy(this->messages[next_free_buffer], buffer, MAX_MESSAGE_LENGTH);
+    this->messages[next_free_buffer][MAX_MESSAGE_LENGTH - 1] = '\0'; 
+    next_free_buffer++;
+    
+    }
+}
+
+const void Logger::outputBuffer()
+{
+    for(uint8_t i = 0; i <= next_free_buffer; i++)
+    {
+        output(this->messages[i]);
+    }
+    next_free_buffer = 0;
+}

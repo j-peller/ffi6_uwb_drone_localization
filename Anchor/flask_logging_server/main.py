@@ -2,11 +2,18 @@ from datetime import datetime
 from flask import Flask, render_template
 from flask_sock import Sock
 import json
+import os
 
 app = Flask(__name__)
 sock = Sock(app)
 
-log_file = datetime.now().strftime('%Y%m%d_%H%M%S_messages.log')
+LOG_DIR = os.path.dirname(os.path.abspath(__file__))
+log_file = os.path.join(LOG_DIR,datetime.now().strftime('%Y%m%d_%H%M%S_messages.log'))
+
+print(f"[INFO] Logging to: {log_file}")
+with open(log_file, 'a') as f:
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    f.write(f"{timestamp} [LOG] Server started\n")
 
 # Liste der verbundenen Clients
 connected_clients = set()

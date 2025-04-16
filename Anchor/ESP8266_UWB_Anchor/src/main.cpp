@@ -28,7 +28,7 @@ void loop()
   //uint8_t devIDNetID[4] = { 0xAB, 0xAC, 0xFE, 0xAF }; /* AFFE - PAN | ACAB - ADDR*/
   //dw1000.writeNetworkIdAndDeviceAddress(devIDNetID);
   delay(500);
-  wifiHandler.loop(); /* Todo! Timeintensive right now*/
+  wifiHandler.loop(); /* Todo! timeintensive right now*/
   digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
   dw1000ranging->loop();
   logger.outputBuffer();

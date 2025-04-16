@@ -136,6 +136,7 @@ class DW1000 {
         void setReceiverAutoReenable(boolean val);
         void readReceivedData(uint8_t** data, uint16_t* length);
         uint16_t getReceivedDataLength();
+        void deleteReceivedDataLength();
 
 
         /*  Responsible for loading Leading Edge Detection microcode from ROM to RAM as described in 7.2.46.3 LDELOAD

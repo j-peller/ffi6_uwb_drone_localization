@@ -474,7 +474,7 @@ void DW1000::handleInterrupt()
 
     if(sys_status & SYS_STATUS_RXDFR)
     {
-        if(logger!=nullptr) logger->addBuffer("Knock knocK! Damn we received something! %x", sys_status);
+        if(logger!=nullptr) logger->addBuffer("Knock knock! Damn we received something! %x", sys_status);
     }
 }
 
@@ -544,6 +544,9 @@ void DW1000::readReceivedData(uint8_t** data, uint16_t* length)
     /* update the length of the received buffer */
     *length = len;
     *data = rx_data;
+
+    /* delete received data length to prevent double read accesses */
+    deleteReceivedDataLength();
 }
 uint16_t DW1000::getReceivedDataLength()
 {
@@ -553,4 +556,12 @@ uint16_t DW1000::getReceivedDataLength()
     /* Get the length of the received data */
     uint16_t len = data & (RX_FINFO_RXFLE_MASK | RX_FINFO_RXFLEN_MASK);
     return len;
+}
+
+void DW1000::deleteReceivedDataLength()
+{
+    uint32_t data = 0;
+    
+    data = ~(RX_FINFO_RXFLE_MASK | RX_FINFO_RXFLEN_MASK);
+    writeBytes(RX_FINFO_ID, NO_SUB_ADDRESS, data);
 }

@@ -108,7 +108,9 @@ private:
 
     /* Basic SPI Read and Write */
     void readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t len);
+    void readBytes(uint8_t reg, uint16_t offset, uint32_t* data);
     void writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t len);
+    void writeBytes(uint8_t reg, uint16_t offset, uint32_t data);
 
     /* OTP Read and Write */
     void readBytesOTP(uint16_t addr, uint8_t* data, uint32_t len);
@@ -116,6 +118,7 @@ private:
 
     /* */
     uint8_t getReceivedDataLength();
+    void deleteReceivedDataLength();
     
     /* DW1000 Mode Control */
     void forceIdle();

@@ -26,8 +26,12 @@ int main() {
 
     DW1000Time rx_time;
     /* after reception it will clear its state and go to idle */
-    controller->test_receiving_timestamp(rx_time);
-    fprintf(stdout, "RX Timestamp: %llu\n", rx_time.get_timestamp());
+    while(1) {
+        controller->test_receiving_timestamp(rx_time);
+        fprintf(stdout, "RX Timestamp: %llu\n", rx_time.get_timestamp());
+        usleep(1000000);
+    }
+
 
     //for (int i = 0; i < 10; i++) {
     //    DW1000Time test1, test2;

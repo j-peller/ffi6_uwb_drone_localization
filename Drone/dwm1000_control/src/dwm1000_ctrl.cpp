@@ -379,9 +379,9 @@ uint8_t* DWMController::read_received_data(uint8_t* n)
 {
     /* get length of received data from Frame Info register */
     uint8_t len = getReceivedDataLength();
-    if (len <= 0) {
-        fprintf(stderr, "Invalid length for received data\n");
-        return NULL;
+    while (len <= 0) {
+        len = getReceivedDataLength();
+        busywait_nanoseconds(10000);
     }
     fprintf(stdout, "Received data with length: %d\n", len);
 
@@ -399,6 +399,8 @@ uint8_t* DWMController::read_received_data(uint8_t* n)
 
     /* update the length of the received buffer */
     *n = len;
+
+    deleteReceivedDataLength();
 
     return rx_data;
 }
@@ -547,21 +549,8 @@ void DWMController::get_device_short_addr(uint16_t* short_addr)
  */
 dwm_com_error_t DWMController::test_transmission_timestamp(DW1000Time& tx_time)
 {
-    twr_message_t init_msg = {
-        .header = (twr_frame_header_t) {
-            .frameCtrl = { 0x41, 0x88 },
-            .seqNum = 0x00,
-            .panID = { 0xCA, 0xDE },
-            .destAddr = { 0xff, 0xff },
-            .srcAddr = { MASTER & 0xff, MASTER >> 8 }
-        },
-        .payload = { .init = (twr_init_message_t) {
-            .type = twr_msg_type_t::TWR_MSG_TYPE_POLL,
-            .anchorShortAddr = { 0xff, 0xff},
-            .responseDelay = 0x00
-        }}
-    };
-    write_transmission_data((uint8_t*)&init_msg, sizeof(twr_message_t));
+    uint32_t init_msg = 0x12345678;
+    write_transmission_data((uint8_t*)&init_msg, sizeof(uint32_t));
     start_transmission();
     
     // poll and check for error
@@ -581,16 +570,16 @@ dwm_com_error_t DWMController::test_transmission_timestamp(DW1000Time& tx_time)
  */
 dwm_com_error_t DWMController::test_receiving_timestamp(DW1000Time& rx_time)
 {
-    twr_message_t* msg;
+    uint8_t* msg;
     uint8_t ack_len;
 
     start_receiving();
     // poll and check for error
-    dwm_com_error_t rx_state = poll_rx_status();
-    if (rx_state == ERROR) {
-        return ERROR;
-    }
-    msg = (twr_message_t*) read_received_data(&ack_len);
+    //dwm_com_error_t rx_state = poll_rx_status();
+    //if (rx_state == ERROR) {
+    //    return ERROR;
+    //}
+    msg = read_received_data(&ack_len);
 
     if (msg == NULL) {
         fprintf(stderr, "Failed to read received data\n");
@@ -599,28 +588,10 @@ dwm_com_error_t DWMController::test_receiving_timestamp(DW1000Time& rx_time)
 
     fprintf(stdout, "Received data[%d]: 0x%02X\n", 0, msg[0]);
     for (uint8_t i = 1; i < ack_len; i++) {
-        fprintf(stdout, " 0x%02X\n", i, msg[i]);
+        fprintf(stdout, " 0x%02X", msg[i]);
     }
 
     get_rx_timestamp(rx_time);
-
-    fprintf(stdout,
-        "TWR Message Frame:\n"
-        "  Frame Control     : 0x%02X 0x%02X\n"
-        "  Sequence Number   : 0x%02X\n"
-        "  PAN ID            : 0x%02X 0x%02X\n"
-        "  Destination Addr  : 0x%02X 0x%02X\n"
-        "  Source Addr       : 0x%02X 0x%02X\n"
-        "  Message Type      : 0x%02X\n"
-        "  Anchor Short Addr : 0x%02X 0x%02X\n",
-        msg->header.frameCtrl[0], msg->header.frameCtrl[1],
-        msg->header.seqNum,
-        msg->header.panID[0], msg->header.panID[1],
-        msg->header.destAddr[0], msg->header.destAddr[1],
-        msg->header.srcAddr[0], msg->header.srcAddr[1],
-        msg->payload.init.type,
-        msg->payload.init.anchorShortAddr[0], msg->payload.init.anchorShortAddr[1]
-    );
 
     /* cleanup */
     delete msg;
@@ -685,6 +656,17 @@ void DWMController::readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint3
 
 
 /**
+ * 
+ */
+void DWMController::readBytes(uint8_t reg, uint16_t offset, uint32_t* data)
+{
+    uint8_t cache[4] = {0};
+    readBytes(reg, offset, cache, 4);
+    *data = (cache[3]) << 24 |  (cache[2]) << 16 | (cache[1]) << 8 | (cache[0]);
+}
+
+
+/**
  * @brief Write data to the DWM1000 device
  * 
  * @param reg The register address to write to
@@ -729,6 +711,16 @@ void DWMController::writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint
         perror("Failed to write to SPI device");
         return;
     }
+}
+
+/**
+ * @brief Write data to a specific register using an offset and data of type uint32_t
+ * Converts uint32_t data to the correct uint8_t[] format (little endian)
+ */
+void DWMController::writeBytes(uint8_t reg, uint16_t offset, uint32_t data)
+{
+    //data = __builtin_bswap32(data); // swap to little endian decoding before writing as uint8_t array
+    writeBytes(reg, offset, (uint8_t*)&data, sizeof(uint32_t));
 }
 
 
@@ -784,6 +776,15 @@ uint8_t DWMController::getReceivedDataLength() {
     /* Get the length of the received data */
     uint8_t len = (data[0] & RX_FINFO_RXFLEN_MASK);
     return len;
+}
+
+
+void DWMController::deleteReceivedDataLength()
+{
+    uint32_t data = 0;
+    
+    data = ~(RX_FINFO_RXFLE_MASK | RX_FINFO_RXFLEN_MASK);
+    writeBytes(RX_FINFO_ID, NO_SUB_ADDRESS, data);
 }
 
 

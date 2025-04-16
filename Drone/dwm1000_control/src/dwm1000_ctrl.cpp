@@ -149,9 +149,12 @@ dwm_com_error_t DWMController::do_init_config()
     uint32_t sys_cfg = 0;
     readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
 
-    sys_cfg |= SYS_CFG_FFE;         //< Enable Frame Filtering. This requires SHORT_ADDR to be set beforehand.
-    sys_cfg |= SYS_CFG_FFAD;        //< Allow Data Frame
+    //sys_cfg |= SYS_CFG_FFE;         //< Enable Frame Filtering. This requires SHORT_ADDR to be set beforehand.
+    //sys_cfg |= SYS_CFG_FFAD;        //< Allow Data Frame
+    sys_cfg &= ~SYS_CFG_FFE;          //< Standard Frame mode IEEE 802.15.4 compliant
+    sys_cfg &= ~SYS_CFG_FFAD;         //< Standard Frame mode IEEE 802.15.4 compliant
     sys_cfg |= SYS_CFG_PHR_MODE_00; //< Standard Frame mode IEEE 802.15.4 compliant
+    fprintf(stdout, "SYS_CFG: 0x%08X\n", sys_cfg);
 
     writeBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
 
@@ -187,6 +190,7 @@ dwm_com_error_t DWMController::do_init_config()
     tx_fctrl &= ~TX_FCTRL_TXPSR_MASK;   //< Clear current setting
     tx_fctrl &= ~TX_FCTRL_TXPSR_PE_MASK; //< Clear Preamble Extension flags see table 16 page 71
     tx_fctrl |= TX_FCTRL_TXPSR_PE_1024; //< Set 1024 preamble symbols 
+    fprintf(stdout, "TX_FCTRL: 0x%08X\n", tx_fctrl);
 
     writeBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&tx_fctrl, TX_FCTRL_LEN);
 
@@ -204,6 +208,16 @@ dwm_com_error_t DWMController::do_init_config()
     uint32_t chan_ctrl = 0;
     readBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&chan_ctrl, CHAN_CTRL_LEN);
 
+    chan_ctrl &= ~CHAN_CTRL_TX_CHAN_MASK;           //< Clear current TX Channel
+    chan_ctrl |= (0x5 << CHAN_CTRL_TX_CHAN_SHIFT);  //< Set TX Channel to 5
+
+    chan_ctrl &= ~CHAN_CTRL_RX_CHAN_MASK;           //< Clear current RX Channel
+    chan_ctrl |= (0x5 << CHAN_CTRL_RX_CHAN_SHIFT);  //< Set RX Channel to 5
+
+    chan_ctrl &= ~CHAN_CTRL_DWSFD;                  //< Clear current SFD settings
+    chan_ctrl &= ~CHAN_CTRL_TNSSFD;                  //< Clear current SFD settings
+    chan_ctrl &= ~CHAN_CTRL_RNSSFD;                  //< Clear current SFD settings
+
     chan_ctrl &= ~CHAN_CTRL_RXFPRF_MASK;            //< Clear current RX PRF
     chan_ctrl |= CHAN_CTRL_RXFPRF_64;               //< Set RX PRF to 64 MHz to match Transmitter
 
@@ -212,6 +226,7 @@ dwm_com_error_t DWMController::do_init_config()
 
     chan_ctrl &= ~CHAN_CTRL_RX_PCOD_MASK;           //< Clear current Preamble Code for Receiver
     chan_ctrl |= (0x9) << CHAN_CTRL_RX_PCOD_SHIFT;  //< Set Preamble Code 9. Supported according to page 214 table 61
+    fprintf(stdout, "CHAN_CTRL: 0x%08X\n", chan_ctrl);
 
     writeBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&chan_ctrl, CHAN_CTRL_LEN);
 
@@ -259,6 +274,9 @@ dwm_com_error_t DWMController::do_init_config()
     uint64_t ldotune_cal_val = 0;
     readBytesOTP(0x0004, (uint8_t*)&ldotune_cal_val, sizeof(uint64_t));
     writeBytes(RF_CONF_ID, 0x30, (uint8_t*)&ldotune_cal_val, 5);
+
+
+    spiSetBaud(FAST_SPI);
 
     return SUCCESS;
 }
@@ -365,6 +383,7 @@ uint8_t* DWMController::read_received_data(uint8_t* n)
         fprintf(stderr, "Invalid length for received data\n");
         return NULL;
     }
+    fprintf(stdout, "Received data with length: %d\n", len);
 
     /* TODO: Check if FCS is good */
 
@@ -413,23 +432,35 @@ dwm_com_error_t DWMController::poll_status_bit(uint64_t status_bit, uint64_t tim
     timespec start, now;
 
     clock_gettime(CLOCK_MONOTONIC_RAW,  &start);
-    do {
 
-        readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, sys_status, SYS_STATE_LEN);
-        clock_gettime(CLOCK_MONOTONIC_RAW,  &now);
+    uint64_t status = 0;
+    while (true) {
+
+        readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, sys_status, SYS_STATUS_LEN);
         
-        busywait_nanoseconds(1000);
-
-        /* TODO: Do we wait long enough!? */
-        if (timespec_delta_nanoseconds(&now, &start) > timeout) {
-            //fprintf(stderr, "Timeout waiting for status bit\n");
-            // return ERROR;
+        status = 0;
+        for (int i = 0; i < SYS_STATUS_LEN; i++) {
+            status |= ((uint64_t)sys_status[i] << (i * 8));
         }
 
-    } while (! (*(uint64_t*)(sys_status) & (status_bit)) );
+        if (status & status_bit) {
+            fprintf(stdout, "Status bit: 0x%08X\n", status);
+            break;
+        }
 
-    /* clear status bit */
-    writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, (uint8_t*)&status_bit, SYS_STATUS_LEN);
+
+        clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+        if (timespec_delta_nanoseconds(&now, &start) > timeout) {
+
+        }
+
+        busywait_nanoseconds(10000); // optional delay to avoid hammering the SPI
+    }
+
+    status = status_bit;
+    writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, (uint8_t*)&status, SYS_STATUS_LEN);
+    readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, sys_status, SYS_STATUS_LEN);
+    fprintf(stdout, "Status bit: 0x%08X\n", sys_status);
 
     return SUCCESS;
 }
@@ -564,6 +595,11 @@ dwm_com_error_t DWMController::test_receiving_timestamp(DW1000Time& rx_time)
     if (msg == NULL) {
         fprintf(stderr, "Failed to read received data\n");
         return ERROR;
+    }
+
+    fprintf(stdout, "Received data[%d]: 0x%02X\n", 0, msg[0]);
+    for (uint8_t i = 1; i < ack_len; i++) {
+        fprintf(stdout, " 0x%02X\n", i, msg[i]);
     }
 
     get_rx_timestamp(rx_time);
@@ -714,12 +750,12 @@ void DWMController::_readBytesOTP(uint16_t addr, uint8_t* data)
 {
     uint16_t otp_addr = addr;
     /* Write OTP Address for read */
-    writeBytes(OTP_IF_ID, OTP_CTRL, (uint8_t*)&otp_addr, sizeof(uint16_t));
+    writeBytes(OTP_IF_ID, OTP_ADDR, (uint8_t*)&otp_addr, sizeof(uint16_t));
 
     /* Perform OTP Read - Manual read mode has to be set */
     uint8_t otp_cmd = OTP_CTRL_OTPREAD | OTP_CTRL_OTPRDEN;
     writeBytes(OTP_IF_ID, OTP_CTRL, (uint8_t*)&otp_cmd, sizeof(uint8_t));
-    otp_cmd = 0x0;
+    otp_cmd = OTP_CTRL_OTPRDEN;
     writeBytes(OTP_IF_ID, OTP_CTRL, (uint8_t*)&otp_cmd, sizeof(uint8_t));
 
     /* Read data is available after 40ns */
@@ -727,6 +763,9 @@ void DWMController::_readBytesOTP(uint16_t addr, uint8_t* data)
 
     /* Read data from OTP */
     readBytes(OTP_IF_ID, OTP_RDAT, data, sizeof(uint32_t));
+
+    otp_cmd = 0x00;
+    writeBytes(OTP_IF_ID, OTP_CTRL, (uint8_t*)&otp_cmd, sizeof(uint8_t));
 }
 
 

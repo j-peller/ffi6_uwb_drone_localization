@@ -133,7 +133,7 @@ dwm_com_error_t DWMRanging::do_response_ack_state(DW1000Time& ack_rx_ts)
 
     _controller->start_receiving();
     // poll and check for error
-    dwm_com_error_t tx_state = _controller->poll_tx_status();
+    dwm_com_error_t tx_state = _controller->poll_rx_status();
     if (tx_state == dwm_com_error_t::ERROR) {
         waitOutError();
         return dwm_com_error_t::ERROR;
@@ -200,7 +200,7 @@ dwm_com_error_t DWMRanging::do_report_state(DW1000Time& esp_init_rx_ts, DW1000Ti
 
     _controller->start_receiving();
     // poll and check for error
-    dwm_com_error_t tx_state = _controller->poll_tx_status();
+    dwm_com_error_t tx_state = _controller->poll_rx_status();
     if (tx_state == dwm_com_error_t::ERROR) {
         waitOutError();
         return dwm_com_error_t::ERROR;

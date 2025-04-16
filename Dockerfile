@@ -22,7 +22,7 @@ COPY . .
 WORKDIR /Drone/dwm1000_control
 
 # Configure and build your project
-RUN cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} . && make
+RUN cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} . && make -j4
 
 # Stage 2: Export the final binary
 FROM scratch AS export-stage

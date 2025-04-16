@@ -5,6 +5,7 @@
 #include <SPI.h>
 #include "../extern/uwb-dw1000/hw/drivers/uwb/uwb_dw1000/include/dw1000/dw1000_regs.h"
 #include <logger.hpp>
+#include "dw1000_time.hpp"
 /**
  * @brief SPI command structure for the DWM1000
  */
@@ -106,6 +107,8 @@ inline InterruptTable& operator|=(InterruptTable& lhs, InterruptTable rhs) {
 };
 
 
+
+
     /* SPI Transaction Header operation modes  */
 const uint8_t    READ        = 0x00;
 const uint8_t    READ_SUB    = 0x40;
@@ -137,6 +140,7 @@ class DW1000 {
         void readReceivedData(uint8_t** data, uint16_t* length);
         uint16_t getReceivedDataLength();
         void deleteReceivedDataLength();
+        void addCustomInterruptHandler(std::function<void()> callback);
 
 
         /*  Responsible for loading Leading Edge Detection microcode from ROM to RAM as described in 7.2.46.3 LDELOAD
@@ -147,16 +151,23 @@ class DW1000 {
         void enableInterrupts(enum InterruptTable table);
         void soft_reset();
         void setClock(ClockSpeed clock);
+        uint16_t getDeviceID();
 
 
         void addLogger(Logger* logger);
         void forceIdle();
+
+        void get_tx_timestamp(DW1000Time& time);
+        void get_rx_timestamp(DW1000Time& time);
+
         Logger* logger = nullptr;
     private:
         uint8_t irq = D2;
         uint8_t chip_select = D8;
         DeviceMode current_mode = IDLE;
         SPISettings spiSettings = SPISettings(20000000L, MSBFIRST, SPI_MODE0);
+
+        std::function<void()> interruptCallback;
         void spi_transceive(uint8_t header[], uint8_t header_length, uint8_t data[], uint16_t data_length);
         void clearStatusRegister();
         

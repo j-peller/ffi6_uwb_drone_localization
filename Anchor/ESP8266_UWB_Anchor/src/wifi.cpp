@@ -63,12 +63,12 @@ const void WifiHandler::loop()
     }
 }
 
-bool WifiHandler::logData(const char* message)
+bool WifiHandler::logData(uint32_t deviceID, const char* message)
 {
     bool success = false;
     if (WiFi.status() == WL_CONNECTED) {
         //String jsonString = "{\"esp_id\":\"ESP8266-1\",\"message\":" + String(3) + "}";
-        String jsonString = "{\"esp_id\":\"" + String(ESP_ID) + "\",\"message\":\"" + String(message) + "\"}";
+        String jsonString = "{\"esp_id\":\"" + String(deviceID) + "\",\"message\":\"" + String(message) + "\"}";
         success = client.send(jsonString);
         if(success)
         {
@@ -81,25 +81,6 @@ bool WifiHandler::logData(const char* message)
             }*/
         }
 
-
-        /*HTTPClient http;
-        http.begin(*wifiClient, SERVER_URL);
-        http.addHeader("Content-Type", "application/json");
-    
-        String jsonData = "{\"esp_id\":\"69\",\"message\":\"Test\"}";
-        int httpResponseCode = http.POST(jsonData);
-    
-        if (httpResponseCode > 0) {
-            success = true;
-            Serial.println("Daten gesendet!" + String(httpResponseCode));
-        } else {
-            Serial.println("Fehler beim Senden: " + String(httpResponseCode));
-        }
-
-        //this->webSocket->sendTXT("{\"esp_id\":\"69\",\"message\":\"Testnachricht\"}");
-    
-        http.end();
-        */
     }
     return success;
 }

@@ -1,5 +1,9 @@
 #include "DW1000Ranging.hpp"
 
+uint16_t pan = 0xAFFE;
+uint16_t tag_id = 0xAAAA;
+uint16_t anchor_id = 0xBBBB;
+
 DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType(deviceType), dw1000(dw1000)
 {
     this->deviceType = deviceType;
@@ -10,7 +14,7 @@ DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType
     dw1000.initialize();
     
 
-    uint16_t pan = 0xAFFE;
+    
     uint16_t device_id = 0;
     InterruptTable interrupts = (InterruptTable) 0;
 
@@ -34,15 +38,15 @@ DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType
     
     dw1000.loadLDECode();
     dw1000.setPANAdress(pan);
-
+    
     switch (this->deviceType)
     {
         case TAG:
-            device_id = 0xAAAA;
+            device_id = tag_id;
             interrupts |= InterruptTable::INTERRUPT_ALL;
             break;
         case ANCHOR:
-            device_id = 0xBBBB;
+            device_id = anchor_id;
             interrupts |= InterruptTable::INTERRUPT_ALL;
             dw1000.setReceiverAutoReenable(true);
             break;
@@ -53,10 +57,11 @@ DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType
     dw1000.enableInterrupts(interrupts);
    
     dw1000.setMode(thotro110);
-
-    uint32_t read = 0;
-    dw1000.readBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, &read);
-    dw1000.logger->addBuffer("chan_trl %x", read);
+    if(dw1000.logger != nullptr)
+    {
+        dw1000.logger->setDeviceID(dw1000.getDeviceID());
+        dw1000.logger->output("Device started");
+    } 
 }
 
 void DW1000Ranging::loop()
@@ -64,41 +69,11 @@ void DW1000Ranging::loop()
     uint8_t tx_message[3] = {0xFE, 0xAF, 0x00};
     static uint8_t counter = 0;
 
-    uint32_t read = 0;
-    dw1000.readBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, &read);
-    dw1000.logger->addBuffer("chan_trl %x", read);
-
-    read = 0;
-    dw1000.readBytes(DEV_ID_ID, NO_SUB_ADDRESS, &read);
-    dw1000.logger->addBuffer("devid %x", read);
-
-    read = 0;
-    dw1000.readBytes(PANADR_ID, NO_SUB_ADDRESS, &read);
-    dw1000.logger->addBuffer("panaddr %x", read);
-
     uint8_t* message = nullptr;
     uint16_t length = 0;
-    dw1000.readReceivedData(&message, &length);
+}
 
-    if(message!=nullptr)
-    {
-        for (int i = 0; i < length; i++) {
-            dw1000.logger->output("%02x ", message[i]);
-        }
-        delete[] message;
-    } else {
-        dw1000.logger->output("null");
-    }
+void DW1000Ranging::twr_send(twr_message_t message)
+{
 
-    switch(this->deviceType)
-    {
-        case TAG:
-            tx_message[2] = counter++;
-            dw1000.transmit(tx_message, 3);
-            dw1000.logger->addBuffer("Transmit!");
-            break;
-        case ANCHOR:
-            dw1000.startReceiving();
-            break;
-    }
 }

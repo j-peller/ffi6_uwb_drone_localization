@@ -12,7 +12,6 @@ class WifiHandler
     public:
         WifiHandler();
         const void begin();
-        bool logData(const char* message);
+        bool logData(uint32_t deviceID, const char* message);
         const void loop();
-    
 };

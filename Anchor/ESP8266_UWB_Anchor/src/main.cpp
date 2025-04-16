@@ -20,7 +20,7 @@ void setup()
   wifiHandler.begin();
   pinMode(LED_BUILTIN, OUTPUT); 
   dw1000.addLogger(&logger);
-  dw1000ranging = new DW1000Ranging(deviceType, dw1000);
+  dw1000ranging = new DW1000RangingTag(deviceType, dw1000);
 }
 
 void loop()

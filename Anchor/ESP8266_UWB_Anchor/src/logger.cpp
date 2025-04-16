@@ -17,7 +17,7 @@ const void Logger::output(const char* message, ...)
     va_end(args);
 
     Serial.println(buffer);
-    this->wifiHandler->logData(buffer);
+    this->wifiHandler->logData(deviceID, buffer);
 }
 
 const void Logger::addBuffer(const char* message, ...)
@@ -45,4 +45,8 @@ const void Logger::outputBuffer()
         output(this->messages[i]);
     }
     next_free_buffer = 0;
+}
+void Logger::setDeviceID(uint32_t deviceID)
+{
+    this->deviceID = deviceID;
 }

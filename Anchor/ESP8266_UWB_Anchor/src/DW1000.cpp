@@ -194,6 +194,7 @@ void DW1000::initialize()
 void DW1000::addLogger(Logger* logger)
 {
     this->logger = logger;
+    this->logger->setDeviceID(getDeviceID());
 }
 
 void DW1000::readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t length)
@@ -450,6 +451,14 @@ void DW1000::setDeviceID(uint16_t id)
 {
     writeBytes(PANADR_ID, NO_SUB_ADDRESS, (uint8_t*) &id, 2);
 }
+
+uint16_t DW1000::getDeviceID()
+{
+    uint16_t deviceID;
+    readBytes(PANADR_ID, NO_SUB_ADDRESS, (uint8_t*) &deviceID, 2);
+    return deviceID;
+}
+
 void DW1000::setPANAdress(uint16_t address)
 {
     writeBytes(PANADR_ID, PANADR_PAN_ID_OFFSET, (uint8_t*) &(address), 2);
@@ -474,7 +483,7 @@ void DW1000::handleInterrupt()
 
     if(sys_status & SYS_STATUS_RXDFR)
     {
-        if(logger!=nullptr) logger->addBuffer("Knock knock! Damn we received something! %x", sys_status);
+        if(logger!=nullptr) logger->addBuffer("Knock knock!! %x", sys_status);
     }
 }
 
@@ -530,7 +539,7 @@ void DW1000::readReceivedData(uint8_t** data, uint16_t* length)
     /* get length of received data from Frame Info register */
     uint16_t len = getReceivedDataLength();
     /* TODO: Check if FCS is good */
-    if(logger) logger->output("LENGTH %x", len);
+
     /* */
     uint8_t* rx_data = new uint8_t[len];
 
@@ -565,3 +574,26 @@ void DW1000::deleteReceivedDataLength()
     data = ~(RX_FINFO_RXFLE_MASK | RX_FINFO_RXFLEN_MASK);
     writeBytes(RX_FINFO_ID, NO_SUB_ADDRESS, data);
 }
+
+void DW1000::get_tx_timestamp(DW1000Time& time)
+{
+    uint8_t data[TX_STAMP_LEN] = {0};
+    readBytes(TX_TIME_ID, TX_TIME_TX_STAMP_OFFSET, data, TX_STAMP_LEN);
+
+    /* Get the TX timestamp */
+    time.set_timestamp(data);
+}
+void DW1000::get_rx_timestamp(DW1000Time& time)
+{
+    uint8_t data[RX_STAMP_LEN] = {0};
+    readBytes(RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, data, RX_STAMP_LEN);
+
+    /* Get the RX timestamp */
+    time.set_timestamp(data);
+}
+
+void DW1000::addCustomInterruptHandler(std::function<void()> callback)
+{
+    interruptCallback = callback;
+}
+

@@ -46,6 +46,7 @@ const void WifiHandler::connectWifi()
 }
 const void WifiHandler::loop()
 {
+    static unsigned long last_try = 0;
     if(AUTOMATIC_RECONNECT)
     {
         if (WiFi.status() != WL_CONNECTED) {
@@ -53,8 +54,9 @@ const void WifiHandler::loop()
             connectWifi();
             
         } else{
-            if(!client.available())
+            if(!client.available() && millis() - last_try >= RETRY_AFTER)
             {
+                last_try = millis();
                 connectWS();
             }
         }

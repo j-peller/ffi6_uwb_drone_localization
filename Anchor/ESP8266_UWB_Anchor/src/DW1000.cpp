@@ -16,56 +16,70 @@ const ClockSpeed ClockSpeed::fast = {
 };
 Bitrate bitrate_110k {
     .txbr = TX_FCTRL_TXBR_110k,
+    .rxm110k = SYS_CFG_RXM110K,
 };
 Bitrate bitrate_850k {
     .txbr = TX_FCTRL_TXBR_850k,
+    .rxm110k = 0,
 };
 Bitrate bitrate_6M {
     .txbr = TX_FCTRL_TXBR_6M,
+    .rxm110k = 0,
 };
 
 PRF prf64 {
     .txprf = TX_FCTRL_TXPRF_64M,
     .rxfprf = CHAN_CTRL_RXFPRF_64,
+    .drx_tune1a = DRX_TUNE1a_PRF64,
 };
+
 PRF prf16 {
     .txprf = TX_FCTRL_TXPRF_16M,
     .rxfprf = CHAN_CTRL_RXFPRF_16,
+    .drx_tune1a = DRX_TUNE1a_PRF16,
 };
+
 PRF prf4 {
     .txprf = TX_FCTRL_TXPRF_4M,
     .rxfprf = CHAN_CTRL_RXFPRF_4,
+    .drx_tune1a = 0,
 };
+
 Channel channel1 = {
     .rf_rxctrlh = RF_RXCTRLH_NBW,
     .rf_txctrl = RF_TXCTRL_CH1,
     .tc_pgdelay = TC_PGDELAY_CH1,
     .fs_pllcfg = FS_PLLCFG_CH1,
 };
+
 Channel channel2 = {
     .rf_rxctrlh = RF_RXCTRLH_NBW,
     .rf_txctrl = RF_TXCTRL_CH2,
     .tc_pgdelay = TC_PGDELAY_CH2,
     .fs_pllcfg = FS_PLLCFG_CH2,
 };
+
 Channel channel3 = {
     .rf_rxctrlh = RF_RXCTRLH_NBW,
     .rf_txctrl = RF_TXCTRL_CH3,
     .tc_pgdelay = TC_PGDELAY_CH3,
     .fs_pllcfg = FS_PLLCFG_CH3,
 };
+
 Channel channel4 = {
     .rf_rxctrlh = RF_RXCTRLH_WBW,
     .rf_txctrl = RF_TXCTRL_CH4,
     .tc_pgdelay = TC_PGDELAY_CH4,
     .fs_pllcfg = FS_PLLCFG_CH4,
 };
+
 Channel channel5 = {
     .rf_rxctrlh = RF_RXCTRLH_NBW,
     .rf_txctrl = RF_TXCTRL_CH5,
     .tc_pgdelay = TC_PGDELAY_CH5,
     .fs_pllcfg = FS_PLLCFG_CH5,
 };
+
 Channel channel7 = {
     .rf_rxctrlh = RF_RXCTRLH_WBW,
     .rf_txctrl = RF_TXCTRL_CH7,
@@ -78,14 +92,24 @@ static void IRAM_ATTR dw1000_interrupt_handler(void* arg) {
     instance->handleInterrupt();
 }
 
+void DW1000::setReceiverAutoReenable(boolean val)
+{
+    uint32_t data = 0;
+    readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, &data);
+    data &= ~(SYS_CFG_RXAUTR);
+    if(val) data |= SYS_CFG_RXAUTR;
+    writeBytes(SYS_CFG_ID, NO_SUB_ADDRESS, data);
+}
+
 void DW1000::setMode(Mode mode)
 {
     uint32_t sys_cfg = 0;
     readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
 
-    sys_cfg |= SYS_CFG_FFE;         //< Enable Frame Filtering. This requires SHORT_ADDR to be set beforehand.
+    //sys_cfg |= SYS_CFG_FFE;         //< Enable Frame Filtering. This requires SHORT_ADDR to be set beforehand.
     sys_cfg |= SYS_CFG_FFAD;        //< Allow Data Frame
     sys_cfg |= SYS_CFG_PHR_MODE_00; //< Standard Frame mode IEEE 802.15.4 compliant
+    sys_cfg |= mode.bitrate.rxm110k;
 
     writeBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
 
@@ -97,7 +121,7 @@ void DW1000::setMode(Mode mode)
     writeBytes(RF_CONF_ID, RF_TXCTRL_OFFSET, rf_txctrl_val);
 
     uint8_t tc_pgdelay_val = mode.channel.tc_pgdelay;    //< See DW1000 User Manual Page 155 Table 40 
-    writeBytes(TX_CAL_ID, TC_PGDELAY_OFFSET, (uint8_t*)&tc_pgdelay_val, sizeof(uint8_t));
+    writeBytes(TX_CAL_ID, TC_PGDELAY_OFFSET, &tc_pgdelay_val, sizeof(uint8_t));
 
     uint32_t fs_pllcfg_val = mode.channel.fs_pllcfg;     //< See DW1000 User Manual Page 157 Table 43
     writeBytes(FS_CTRL_ID, FS_PLLCFG_OFFSET, fs_pllcfg_val);
@@ -122,7 +146,7 @@ void DW1000::setMode(Mode mode)
      * Required Configuration for Receiver on Channel 5
      */
     uint8_t rf_rxctrlh_val = mode.channel.rf_rxctrlh; //< See DW1000 User Manual Page 148 Table 37
-    writeBytes(RF_CONF_ID, RF_RXCTRLH_OFFSET, (uint8_t*)&rf_rxctrlh_val, sizeof(uint8_t));
+    writeBytes(RF_CONF_ID, RF_RXCTRLH_OFFSET, &rf_rxctrlh_val, sizeof(uint8_t));
 
 
     /* Channel Control Settings for both Receiver and Transmitter */
@@ -137,19 +161,33 @@ void DW1000::setMode(Mode mode)
 
     *(uint32_t *) chan_ctrl &= ~CHAN_CTRL_RX_PCOD_MASK;           //< Clear current Preamble Code for Receiver
     *(uint32_t *) chan_ctrl |= (mode.preamble_code) << CHAN_CTRL_RX_PCOD_SHIFT;  //< Set Preamble Code 9. Supported according to page 214 table 61
+    writeBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, chan_ctrl, CHAN_CTRL_LEN);
 
-    writeBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&chan_ctrl, CHAN_CTRL_LEN);
+    switch(mode.sfd){
+        case SFD::STD:
+        {
+
+            break;
+        }
+        case SFD::DecaWave:
+        {
+            break;
+        }
+    }
+       
+    writeBytes(DRX_CONF_ID, DRX_TUNE1a_OFFSET, (uint8_t*)&mode.prf.drx_tune1a, sizeof(uint16_t));  //< See DW1000 User Manual Page 141 Table 31 
 
 }
 void DW1000::initialize()
 {
     delay(5);
-    pinMode(this->irq, INPUT_PULLDOWN_16);
+    pinMode(this->irq, INPUT);
     SPI.begin();
     //attachInterrupt(digitalPinToInterrupt(irq), DW1000::handleInterrupt, RISING);
     attachInterruptArg(digitalPinToInterrupt(irq), dw1000_interrupt_handler, this, RISING); // TODO was rising
     pinMode(chip_select, OUTPUT);
     digitalWrite(chip_select, HIGH);
+    delay(1000);
 
 }
 
@@ -193,6 +231,7 @@ void DW1000::readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t len
 	SPI.endTransaction();
     SPI.end();
 
+    delayMicroseconds(10);
     //interrupts();
     
     /*
@@ -246,15 +285,7 @@ void DW1000::soft_reset()
  {
     /* Set SYSCLKS to 01 */
     uint8_t reg = 0;
-    readBytes(PMSC_ID, PMSC_CTRL0_OFFSET, &reg, sizeof(uint8_t));
-
-    /* clear bits 0:1 */
-    reg &= ~(0x03);
-
-    /* set SYSCLKS to 19.2MHz as per Documentation: p191 DW1000 User Manual */
-    reg |= PMSC_CTRL0_SYSCLKS_19M;
-
-    writeBytes(PMSC_ID, PMSC_CTRL0_OFFSET, &reg, sizeof(uint8_t));
+    setClock(ClockSpeed::slow);
 
     /* Reset HIF, TX, RX and PMSC */
     reg = PMSC_CTRL0_RESET_ALL;
@@ -266,6 +297,9 @@ void DW1000::soft_reset()
     /* Finish reset */
     reg = PMSC_CTRL0_RESET_CLEAR; 
     writeBytes(PMSC_ID, PMSC_CTRL0_SOFTRESET_OFFSET, &reg, sizeof(uint8_t));
+
+
+    setClock(ClockSpeed::fast);
  }
 void DW1000::loadLDECode()
 {
@@ -321,12 +355,6 @@ void DW1000::transmit(uint8_t data[], uint16_t length)
     frame_control &= ~((1 << 10) - 1); /* Reset LEN Bits */
 
     frame_control |= length + 2; /* TFLEN: set first 10 bits to length*/
-
-    frame_control &= ~(0b11 << 13); /* Reset transmit bitrate */
-    frame_control |= TX_FCTRL_TXBR_110k; /* TXBR: transmit bitrate */
-
-    frame_control &= ~(0b111 << 18); /* Reset TXPSR */
-    frame_control |= TX_FCTRL_TXPSR_PE_4096; /* TXPSR: Length of transmitted preamble sequence*/
 
     writeBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, frame_control);
 
@@ -388,6 +416,7 @@ void DW1000::writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t le
 	SPI.endTransaction();
     SPI.end();
     //interrupts();
+    delayMicroseconds(10);
 
 }
 /**
@@ -417,7 +446,23 @@ void DW1000::writeNetworkIdAndDeviceAddress(uint8_t* data)
 {
     writeBytes(PANADR_ID, NO_SUB_ADDRESS, data, PANADR_LEN);
 }
+void DW1000::setDeviceID(uint16_t id)
+{
+    writeBytes(PANADR_ID, NO_SUB_ADDRESS, (uint8_t*) &id, 2);
+}
+void DW1000::setPANAdress(uint16_t address)
+{
+    writeBytes(PANADR_ID, PANADR_PAN_ID_OFFSET, (uint8_t*) &(address), 2);
+}
 
+void DW1000::startReceiving()
+{
+    forceIdle();
+    uint32_t sys_ctrl = 0;
+    readBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, &sys_ctrl);
+    sys_ctrl |= SYS_CTRL_RXENAB;
+    writeBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, sys_ctrl);
+}
 
 
 void DW1000::handleInterrupt()
@@ -426,6 +471,11 @@ void DW1000::handleInterrupt()
     readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &sys_status);
     if(logger!=nullptr) logger->addBuffer("Gotcha! %x", sys_status);
     clearStatusRegister();
+
+    if(sys_status & SYS_STATUS_RXDFR)
+    {
+        if(logger!=nullptr) logger->addBuffer("Knock knocK! Damn we received something! %x", sys_status);
+    }
 }
 
 void DW1000::idle() {
@@ -466,4 +516,41 @@ void DW1000::forceIdle() {
     //this->_dev_mode = IDLE_MODE;
 
     writeBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_ctrl , SYS_CTRL_LEN);
+}
+
+/**
+ * @brief Read len bytes of received data from the RX buffer of the DW1000
+ * 
+ * @param data Pointer to the buffer to store the received data
+ * @param n Pointer to the variable to store the length of the received data
+ *
+ */
+void DW1000::readReceivedData(uint8_t** data, uint16_t* length)
+{
+    /* get length of received data from Frame Info register */
+    uint16_t len = getReceivedDataLength();
+    /* TODO: Check if FCS is good */
+    if(logger) logger->output("LENGTH %x", len);
+    /* */
+    uint8_t* rx_data = new uint8_t[len];
+
+    if (rx_data == nullptr) {
+        if(logger != nullptr) logger->addBuffer("Failed to allocate memory for received data with length 0x%x", *length);
+        return;
+    }
+    /* Read received data from RX_BUFFER of DW1000 */
+    readBytes(RX_BUFFER_ID, NO_SUB_ADDRESS, rx_data, len);
+
+    /* update the length of the received buffer */
+    *length = len;
+    *data = rx_data;
+}
+uint16_t DW1000::getReceivedDataLength()
+{
+    uint32_t data = 0;
+    readBytes(RX_FINFO_ID, NO_SUB_ADDRESS, &data);
+
+    /* Get the length of the received data */
+    uint16_t len = data & (RX_FINFO_RXFLE_MASK | RX_FINFO_RXFLEN_MASK);
+    return len;
 }

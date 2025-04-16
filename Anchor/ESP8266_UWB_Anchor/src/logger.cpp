@@ -40,7 +40,7 @@ const void Logger::addBuffer(const char* message, ...)
 
 const void Logger::outputBuffer()
 {
-    for(uint8_t i = 0; i <= next_free_buffer; i++)
+    for(uint8_t i = 0; i < next_free_buffer; i++)
     {
         output(this->messages[i]);
     }

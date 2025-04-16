@@ -35,9 +35,16 @@ struct Channel {
 struct PRF {
     uint32_t txprf;
     uint32_t rxfprf;
+    uint16_t drx_tune1a;
 };
 struct Bitrate {
     uint32_t txbr;
+    uint32_t rxm110k; //RXM110K
+};
+
+enum SFD {
+    STD,
+    DecaWave,
 };
 
 extern Bitrate bitrate_110k;
@@ -61,6 +68,7 @@ struct Mode {
     Bitrate bitrate;
     uint32_t preamble_code;
     uint32_t preamble_length;
+    SFD sfd;
 };
 
 
@@ -92,6 +100,11 @@ inline InterruptTable operator|(InterruptTable lhs, InterruptTable rhs) {
         static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs)
     );
 }
+inline InterruptTable& operator|=(InterruptTable& lhs, InterruptTable rhs) {
+    lhs = lhs | rhs;
+    return lhs;
+};
+
 
     /* SPI Transaction Header operation modes  */
 const uint8_t    READ        = 0x00;
@@ -117,6 +130,13 @@ class DW1000 {
         void setDataRate(uint8_t rate);
         void transmit(uint8_t data[], uint16_t length);
         void setMode(Mode mode);
+        void setDeviceID(uint16_t id);
+        void setPANAdress(uint16_t address);
+        void startReceiving();
+        void setReceiverAutoReenable(boolean val);
+        void readReceivedData(uint8_t** data, uint16_t* length);
+        uint16_t getReceivedDataLength();
+
 
         /*  Responsible for loading Leading Edge Detection microcode from ROM to RAM as described in 7.2.46.3 LDELOAD
             Must be run before receiver mode is enabled!
@@ -130,6 +150,7 @@ class DW1000 {
 
         void addLogger(Logger* logger);
         void forceIdle();
+        Logger* logger = nullptr;
     private:
         uint8_t irq = D2;
         uint8_t chip_select = D8;
@@ -138,5 +159,5 @@ class DW1000 {
         void spi_transceive(uint8_t header[], uint8_t header_length, uint8_t data[], uint16_t data_length);
         void clearStatusRegister();
         
-        Logger* logger = nullptr;
+        
 };

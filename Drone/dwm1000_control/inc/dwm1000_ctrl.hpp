@@ -4,6 +4,7 @@
 #define DWM1000_CTRL_HPP
 
 #include "../../../shared/inc/constants.hpp"
+#include "../../../shared/inc/helpers.hpp"
 #include "../extern/uwb-dw1000/hw/drivers/uwb/uwb_dw1000/include/dw1000/dw1000_regs.h"
 #include "dw1000_time.hpp"
 

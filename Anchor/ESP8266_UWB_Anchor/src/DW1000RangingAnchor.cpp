@@ -6,15 +6,38 @@ DW1000RangingAnchor::DW1000RangingAnchor(DeviceType deviceMode, DW1000& dw1000) 
     
 }
 
+void DW1000RangingAnchor::pollStateIRQHandler(uint32_t sys_status)
+{
+    uint32_t clear_mask = 0;
+    if(sys_status & SYS_STATUS_LDEDONE)
+    {
+        clear_mask |= SYS_STATUS_LDEDONE;
+        dw1000.get_rx_timestamp(esp_init_rx_ts);
+        clear_mask |= (SYS_STATUS_LDEDONE);
+        dw1000.removeCustomInterruptHandler();
+        systemState = STATE_MEASURING_ACTIVE;
+        currentCommState = RESPONSE;
+    }
+
+    uint32_t data = {0};
+    dw1000.readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &data);
+    data &= ~(clear_mask);
+    dw1000.writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, data);
+
+}
+
 void DW1000RangingAnchor::loop()
 {
     DW1000Ranging::loop();
-    switch(currentState)
+    switch(currentCommState)
     {
         case POLL:
         {
             dw1000.startReceiving();
             dw1000.setReceiverAutoReenable(true);
+
+            dw1000.addCustomInterruptHandler(InterruptTable::INTERRUPT_ON_LDE_DONE, [this](uint32_t value) { this->pollStateIRQHandler(value); });
+            
             uint8_t* message = nullptr;
             uint16_t length = 0;
             dw1000.readReceivedData(&message, &length);
@@ -23,7 +46,7 @@ void DW1000RangingAnchor::loop()
                 dw1000.get_rx_timestamp(esp_init_rx_ts);
                 delete[] message;
                 dw1000.logger->output("RX:");
-                currentState = RESPONSE;
+                currentCommState = RESPONSE;
             }
             break;
         }
@@ -48,7 +71,7 @@ void DW1000RangingAnchor::loop()
 
 
             dw1000.logger->output("TX:");
-            currentState = POLL;
+            currentCommState = POLL;
             break;
         }
     }

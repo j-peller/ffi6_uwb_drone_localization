@@ -6,11 +6,17 @@ enum DeviceType {
     ANCHOR,
 };
 
-enum State {
+enum CommState {
     POLL,
     RESPONSE,
     FINAL,
     REPORT,
+};
+
+enum SystemState {
+    STATE_IDLE,
+    STATE_MEASURING_ACTIVE,
+    STATE_MEASURING_WAITING,
 };
 
 
@@ -22,12 +28,14 @@ class DW1000Ranging
 {
     protected:
         DeviceType deviceType;
-        DW1000 dw1000;
-        State currentState = POLL;
+        DW1000& dw1000;
+        CommState currentCommState = POLL;
+        SystemState systemState = STATE_IDLE;
     public:
         DW1000Ranging(DeviceType deviceMode, DW1000& dw1000);
         virtual void loop();
         void twr_send(twr_message_t message);
+        
 };
 
 class DW1000RangingTag : public  DW1000Ranging
@@ -39,6 +47,7 @@ class DW1000RangingTag : public  DW1000Ranging
     public:
         DW1000RangingTag(DeviceType deviceMode, DW1000& dw1000);
         void loop();
+        void pollStateIRQHandler(uint32_t sys_status);
 };
 
 class DW1000RangingAnchor : public DW1000Ranging
@@ -48,5 +57,6 @@ class DW1000RangingAnchor : public DW1000Ranging
     
     public:
         DW1000RangingAnchor(DeviceType deviceMode, DW1000& dw1000);
+        void pollStateIRQHandler(uint32_t sys_status);
         void loop();
 };

@@ -66,11 +66,7 @@ DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType
 
 void DW1000Ranging::loop()
 {
-    uint8_t tx_message[3] = {0xFE, 0xAF, 0x00};
-    static uint8_t counter = 0;
 
-    uint8_t* message = nullptr;
-    uint16_t length = 0;
 }
 
 void DW1000Ranging::twr_send(twr_message_t message)

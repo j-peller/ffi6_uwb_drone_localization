@@ -1,6 +1,7 @@
 #include "DW1000.hpp"
 #include <Arduino.h>
 #include <cassert>
+#include "FunctionalInterrupt.h"
 
 const ClockSpeed ClockSpeed::automatic = {
     .pmsc0_clock = PMSC_CTRL0_SYSCLKS_AUTO,
@@ -184,7 +185,8 @@ void DW1000::initialize()
     pinMode(this->irq, INPUT);
     SPI.begin();
     //attachInterrupt(digitalPinToInterrupt(irq), DW1000::handleInterrupt, RISING);
-    attachInterruptArg(digitalPinToInterrupt(irq), dw1000_interrupt_handler, this, RISING); // TODO was rising
+    //attachInterrupt(digitalPinToInterrupt(irq), std::bind(&DW1000::handleInterrupt, this), RISING); // TODO was rising
+    attachInterruptArg(digitalPinToInterrupt(irq), dw1000_interrupt_handler, this, RISING);
     pinMode(chip_select, OUTPUT);
     digitalWrite(chip_select, HIGH);
     delay(1000);
@@ -356,12 +358,14 @@ void DW1000::transmit(uint8_t data[], uint16_t length)
     frame_control &= ~((1 << 10) - 1); /* Reset LEN Bits */
 
     frame_control |= length + 2; /* TFLEN: set first 10 bits to length*/
-
+    logger->output("TX_FCTRL_ID %x", frame_control);
     writeBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, frame_control);
 
     uint32_t system_ctrl = 0;
     readBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, &system_ctrl);
     system_ctrl |= SYS_CTRL_TXSTRT; /* Start Transmission Now Bit */
+
+    logger->output("SYS_CTRL %x", system_ctrl);
     writeBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, system_ctrl);
 }
 
@@ -479,7 +483,17 @@ void DW1000::handleInterrupt()
     uint32_t sys_status = 0;
     readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &sys_status);
     if(logger!=nullptr) logger->addBuffer("Gotcha! %x", sys_status);
-    clearStatusRegister();
+    logger->addBuffer("customInterruptCallbackTable %x", customInterruptCallbackTable);
+    logger->addBuffer("customInterruptCallback %x", customInterruptCallback);
+    if( (uint32_t) customInterruptCallbackTable & sys_status)
+    {
+        if(customInterruptCallback)
+        {
+            customInterruptCallback(sys_status);
+        } 
+    }
+
+    //clearStatusRegister(); !Dont clear everything!
 
     if(sys_status & SYS_STATUS_RXDFR)
     {
@@ -592,8 +606,15 @@ void DW1000::get_rx_timestamp(DW1000Time& time)
     time.set_timestamp(data);
 }
 
-void DW1000::addCustomInterruptHandler(std::function<void()> callback)
+void DW1000::addCustomInterruptHandler(InterruptTable interruptTable, std::function<void(uint32_t)> callback)
+{ 
+    customInterruptCallbackTable = interruptTable;
+    customInterruptCallback = callback;
+}
+
+void DW1000::removeCustomInterruptHandler()
 {
-    interruptCallback = callback;
+    customInterruptCallbackTable = (InterruptTable) 0;
+    customInterruptCallback = nullptr;
 }
 

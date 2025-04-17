@@ -105,6 +105,10 @@ inline InterruptTable& operator|=(InterruptTable& lhs, InterruptTable rhs) {
     lhs = lhs | rhs;
     return lhs;
 };
+inline InterruptTable& operator&(InterruptTable& lhs, InterruptTable rhs) {
+    lhs = lhs & rhs;
+    return lhs;
+};
 
 
 
@@ -140,7 +144,8 @@ class DW1000 {
         void readReceivedData(uint8_t** data, uint16_t* length);
         uint16_t getReceivedDataLength();
         void deleteReceivedDataLength();
-        void addCustomInterruptHandler(std::function<void()> callback);
+        void addCustomInterruptHandler(InterruptTable interruptTable, std::function<void(uint32_t)> callback);
+        void removeCustomInterruptHandler();
 
 
         /*  Responsible for loading Leading Edge Detection microcode from ROM to RAM as described in 7.2.46.3 LDELOAD
@@ -161,13 +166,17 @@ class DW1000 {
         void get_rx_timestamp(DW1000Time& time);
 
         Logger* logger = nullptr;
+        
     private:
         uint8_t irq = D2;
         uint8_t chip_select = D8;
         DeviceMode current_mode = IDLE;
         SPISettings spiSettings = SPISettings(20000000L, MSBFIRST, SPI_MODE0);
 
-        std::function<void()> interruptCallback;
+        
+        
+        std::function<void(uint32_t)> customInterruptCallback;
+        InterruptTable customInterruptCallbackTable;
         void spi_transceive(uint8_t header[], uint8_t header_length, uint8_t data[], uint16_t data_length);
         void clearStatusRegister();
         

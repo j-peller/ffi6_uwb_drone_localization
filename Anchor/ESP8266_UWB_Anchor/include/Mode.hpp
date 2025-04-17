@@ -1,0 +1,3 @@
+enum DeviceMode {
+    IDLE
+};

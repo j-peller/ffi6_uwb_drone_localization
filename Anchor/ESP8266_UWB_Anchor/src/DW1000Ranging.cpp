@@ -1,8 +1,6 @@
 #include "DW1000Ranging.hpp"
 
-uint16_t pan = 0xAFFE;
-uint16_t tag_id = 0xAAAA;
-uint16_t anchor_id = 0xBBBB;
+uint16_t pan = 0xDECA;
 
 DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType(deviceType), dw1000(dw1000)
 {
@@ -13,9 +11,6 @@ DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType
     delay(1000);
     dw1000.initialize();
     
-
-    
-    uint16_t device_id = 0;
     InterruptTable interrupts = (InterruptTable) 0;
 
     Mode test_mode {
@@ -42,18 +37,15 @@ DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType
     switch (this->deviceType)
     {
         case TAG:
-            device_id = tag_id;
             interrupts |= InterruptTable::INTERRUPT_ALL;
             break;
         case ANCHOR:
-            device_id = anchor_id;
             interrupts |= InterruptTable::INTERRUPT_ALL;
             dw1000.setReceiverAutoReenable(true);
             break;
         default:
             break;
     }
-    dw1000.setDeviceID(device_id);
     dw1000.enableInterrupts(interrupts);
    
     dw1000.setMode(thotro110);

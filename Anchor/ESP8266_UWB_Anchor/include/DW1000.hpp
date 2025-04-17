@@ -173,8 +173,6 @@ class DW1000 {
         DeviceMode current_mode = IDLE;
         SPISettings spiSettings = SPISettings(20000000L, MSBFIRST, SPI_MODE0);
 
-        
-        
         std::function<void(uint32_t)> customInterruptCallback;
         InterruptTable customInterruptCallbackTable;
         void spi_transceive(uint8_t header[], uint8_t header_length, uint8_t data[], uint16_t data_length);

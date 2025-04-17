@@ -6,3 +6,11 @@ reset see SOFTRESET field of Sub-Register 0x36:00 – PMSC_CTRL0.
 
 Maybe status!
 If IDLE we can try to reconnect or log stuff, if not idle we have to send/receive etc.
+
+
+DW1000Ranging.getSystemState() -> überprüfen ob idle bevor heavy funktionen aufgerufen werden!
+IDLE: Alles ok
+MEASUREMENT_WAITING: Wartet halt auf interrupt, man könnte eventuell etwas schnell machen
+MEASUREMENT_ACTIVE: Ist nicht da wo das Programm sein sollte, so schnell wie möglich raus!
+
+remove interrupttable and use register defines instead

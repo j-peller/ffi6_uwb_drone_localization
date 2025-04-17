@@ -552,6 +552,7 @@ void DW1000::readReceivedData(uint8_t** data, uint16_t* length)
 {
     /* get length of received data from Frame Info register */
     uint16_t len = getReceivedDataLength();
+    len-=2; //TODO check if this is correct
     /* TODO: Check if FCS is good */
 
     /* */

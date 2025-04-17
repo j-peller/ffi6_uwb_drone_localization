@@ -1,7 +1,7 @@
 #ifndef COORDS_CALC_H
 #define COORDS_CALC_H
 
-#include "eigen-3.4.0/Eigen/Dense"
+#include <eigen3/Eigen/Dense>
 
 // structs
 typedef struct {

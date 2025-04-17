@@ -32,7 +32,6 @@ typedef struct {
     uint8_t panID[2];       /* PAN ID */
     uint8_t destAddr[2];    /* Destination address */
     uint8_t srcAddr[2];     /* Source address */
-    /* we have variable length for our payload */
 } twr_frame_header_t;
 
 

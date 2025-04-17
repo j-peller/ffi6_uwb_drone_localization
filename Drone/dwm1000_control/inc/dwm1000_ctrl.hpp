@@ -47,11 +47,70 @@ typedef struct {
 /**
  * 
  */
-typedef enum : uint8_t {
-    IDLE_MODE   = 0x00,
-    RX_MODE     = 0x01,
-    TX_MODE     = 0x02,
-} dw1000_dev_mode_t;
+struct Channel {
+    uint8_t num;
+    uint8_t rf_rxctrlh; /* see Table 37 for 0x28:0B– RF_RXCTRLH*/
+    uint32_t rf_txctrl; //TODO Len is 3 in manual?
+    uint8_t tc_pgdelay;
+    uint32_t fs_pllcfg; //TODO Len is 5 in FS_PLLCFG_LEN?
+};
+
+
+/**
+ * 
+ */
+struct PRF {
+    uint32_t txprf;
+    uint32_t rxfprf;
+    uint16_t drx_tune1a;
+};
+
+
+/**
+ * 
+ */
+struct Tuning {
+    uint16_t drx_tune0b;
+    uint16_t drx_tune1a;
+    uint16_t drx_tune1b;
+    uint32_t drx_tune2;
+    uint16_t agc_tune1;
+    uint32_t agc_tune2;
+    uint8_t fs_plltune;
+};
+
+
+/**
+ * 
+ */
+struct Bitrate {
+    uint32_t txbr;
+    uint32_t rxm110k; //RXM110K
+};
+
+
+/**
+ * 
+ */
+enum SFD {
+    STD,
+    DecaWave,
+};
+
+
+/**
+ * 
+ */
+struct Mode {
+    Channel channel;
+    PRF prf;
+    Bitrate bitrate;
+    uint32_t preamble_code;
+    uint32_t preamble_length;
+    SFD sfd;
+    Tuning tune;
+};
+
 
 
 /**
@@ -65,6 +124,7 @@ public:
 
     /* DW1000 Configuration */
     dwm_com_error_t do_init_config();
+    dwm_com_error_t set_mode(Mode mode);
 
     /* Transmission */
     void write_transmission_data(uint8_t* data, uint8_t len);
@@ -99,7 +159,7 @@ public:
     void get_device_short_addr(uint16_t* short_addr);
 
     /* Testing Functions */
-    dwm_com_error_t test_transmission_timestamp(DW1000Time& tx_time);
+    dwm_com_error_t test_transmission_timestamp(DW1000Time& tx_time, uint32_t payload);
     dwm_com_error_t test_receiving_timestamp(DW1000Time& rx_time);
     
     
@@ -116,9 +176,10 @@ private:
     void readBytesOTP(uint16_t addr, uint8_t* data, uint32_t len);
     void _readBytesOTP(uint16_t addr, uint8_t* data);
 
-    /* */
+    /* helpers */
     uint8_t getReceivedDataLength();
     void deleteReceivedDataLength();
+    void clearStatusRegister();
     
     /* DW1000 Mode Control */
     void forceIdle();
@@ -136,7 +197,6 @@ private:
     int                     _spi_fd;
     uint32_t                _cur_spi_baud;
     dw1000_dev_instance_t   _dev_instance;
-    dw1000_dev_mode_t       _dev_mode;
 
     /* GPIO Control for Reset */
     struct gpiod_chip*      _gpio_chip;

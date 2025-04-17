@@ -283,6 +283,126 @@ dwm_com_error_t DWMController::do_init_config()
 
 
 /**
+ * 
+ */
+dwm_com_error_t DWMController::set_mode(Mode mode)
+{
+    uint32_t sys_cfg = 0;
+    readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
+
+    //sys_cfg |= SYS_CFG_FFE;         //< Enable Frame Filtering. This requires SHORT_ADDR to be set beforehand.
+    sys_cfg |= SYS_CFG_FFAD;        //< Allow Data Frame
+    sys_cfg |= SYS_CFG_PHR_MODE_00; //< Standard Frame mode IEEE 802.15.4 compliant
+    sys_cfg |= mode.bitrate.rxm110k;
+
+    writeBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
+
+     /**
+     * Required Configuration for Transmitter on Channel 5
+     */
+
+    uint32_t rf_txctrl_val = mode.channel.rf_txctrl;     //< See DW1000 User Manual Page 148 Table 38
+    writeBytes(RF_CONF_ID, RF_TXCTRL_OFFSET, rf_txctrl_val);
+
+    uint8_t tc_pgdelay_val = mode.channel.tc_pgdelay;    //< See DW1000 User Manual Page 155 Table 40 
+    writeBytes(TX_CAL_ID, TC_PGDELAY_OFFSET, &tc_pgdelay_val, sizeof(uint8_t));
+
+    uint32_t fs_pllcfg_val = mode.channel.fs_pllcfg;     //< See DW1000 User Manual Page 157 Table 43
+    writeBytes(FS_CTRL_ID, FS_PLLCFG_OFFSET, fs_pllcfg_val);
+
+    uint8_t tx_fctrl[TX_FCTRL_LEN] = {0};
+    readBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, tx_fctrl, TX_FCTRL_LEN);
+
+    *(uint64_t *) tx_fctrl &= ~TX_FCTRL_TXBR_MASK; //< Clear current setting
+    *(uint64_t *) tx_fctrl |= mode.bitrate.txbr;
+
+    *(uint64_t *) tx_fctrl &= ~TX_FCTRL_TXPRF_MASK;
+    *(uint64_t *) tx_fctrl |= mode.prf.txprf;
+
+    *(uint64_t *) tx_fctrl &= ~TX_FCTRL_TXPSR_MASK;
+    *(uint64_t *) tx_fctrl &= ~TX_FCTRL_TXPSR_PE_MASK;
+    *(uint64_t *) tx_fctrl |= mode.preamble_length;
+
+    writeBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, tx_fctrl, TX_FCTRL_LEN);
+
+     /**
+     * Required Configuration for Receiver on Channel 5
+     */
+    uint8_t rf_rxctrlh_val = mode.channel.rf_rxctrlh; //< See DW1000 User Manual Page 148 Table 37
+    writeBytes(RF_CONF_ID, RF_RXCTRLH_OFFSET, &rf_rxctrlh_val, sizeof(uint8_t));
+
+
+    /* Channel Control Settings for both Receiver and Transmitter */
+    uint8_t chan_ctrl[CHAN_CTRL_LEN] = {0};
+    readBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, chan_ctrl, CHAN_CTRL_LEN);
+
+    *(uint32_t *) chan_ctrl &= ~CHAN_CTRL_TX_CHAN_MASK;           //< Clear current TX Channel
+    *(uint32_t *) chan_ctrl |= (mode.channel.num << CHAN_CTRL_TX_CHAN_SHIFT);  //< Set TX Channel to 5
+
+    *(uint32_t *) chan_ctrl &= ~CHAN_CTRL_RX_CHAN_MASK;           //< Clear current RX Channel
+    *(uint32_t *) chan_ctrl |= (mode.channel.num << CHAN_CTRL_RX_CHAN_SHIFT);  //< Set RX Channel to 5
+
+    *(uint32_t *) chan_ctrl &= ~CHAN_CTRL_RXFPRF_MASK;            //< Clear current RX PRF
+    *(uint32_t *) chan_ctrl |= mode.prf.rxfprf;               //< Set RX PRF to 64 MHz to match Transmitter
+
+    *(uint32_t *) chan_ctrl &= ~CHAN_CTRL_TX_PCOD_MASK;           //< Clear current Preamble Code for Transceiver
+    *(uint32_t *) chan_ctrl |= (mode.preamble_code) << CHAN_CTRL_TX_PCOD_SHIFT;  //< Set Preamble Code 9. Supported according to page 214 table 61
+
+    *(uint32_t *) chan_ctrl &= ~CHAN_CTRL_RX_PCOD_MASK;           //< Clear current Preamble Code for Receiver
+    *(uint32_t *) chan_ctrl |= (mode.preamble_code) << CHAN_CTRL_RX_PCOD_SHIFT;  //< Set Preamble Code 9. Supported according to page 214 table 61
+    writeBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, chan_ctrl, CHAN_CTRL_LEN);
+
+    switch(mode.sfd){
+        case SFD::STD:
+        {
+
+            break;
+        }
+        case SFD::DecaWave:
+        {
+            break;
+        }
+    }
+
+    /**
+     * Default configurations that should be modified according to Section 2.5.5 page 17 
+     */
+    writeBytes(DRX_CONF_ID, DRX_TUNE0b_OFFSET, (uint8_t*)&mode.tune.drx_tune0b, sizeof(uint16_t));
+    writeBytes(DRX_CONF_ID, DRX_TUNE1a_OFFSET, (uint8_t*)&mode.tune.drx_tune1a, sizeof(uint16_t));
+    writeBytes(DRX_CONF_ID, DRX_TUNE1b_OFFSET, (uint8_t*)&mode.tune.drx_tune1b, sizeof(uint16_t));
+    writeBytes(DRX_CONF_ID, DRX_TUNE2_OFFSET, (uint8_t*)&mode.tune.drx_tune2, sizeof(uint32_t));
+    writeBytes(AGC_CTRL_ID, AGC_TUNE1_OFFSET, (uint8_t*)&mode.tune.agc_tune1, sizeof(uint16_t));
+    writeBytes(AGC_CTRL_ID, AGC_TUNE2_OFFSET, (uint8_t*)&mode.tune.agc_tune2, sizeof(uint32_t));
+
+    uint8_t lde_cfg1 = 0;
+    readBytes(LDE_IF_ID, LDE_CFG1_OFFSET, (uint8_t*)&lde_cfg1, sizeof(uint8_t));
+    lde_cfg1 &= ~LDE_CFG1_NSTDEV_MASK;  //< Clear current setting which is set to 0x0C
+    lde_cfg1 |= 0x0D;                   //< Set 0x0D as described in Section 2.5.5.4 for better performance
+    writeBytes(LDE_IF_ID, LDE_CFG1_OFFSET, (uint8_t*)&lde_cfg1, sizeof(uint8_t));
+
+    uint16_t lde_cfg2 = 0x0607;     //< See DW1000 User Manual Page 177 Table 50
+    writeBytes(LDE_IF_ID, LDE_CFG2_OFFSET, (uint8_t*)&lde_cfg2, sizeof(uint16_t));
+
+    uint32_t tx_power_val = 0x0E082848; //< See DW1000 User Manual Section 2.5.5.6 
+    writeBytes(TX_POWER_ID, NO_SUB_ADDRESS, (uint8_t*)&tx_power_val, sizeof(uint32_t));
+
+    writeBytes(FS_CTRL_ID, FS_PLLTUNE_OFFSET, (uint8_t*)&mode.tune.fs_plltune, sizeof(uint8_t));
+
+    /* Procedure to load LDE Coad into ROM */
+    loadLDECode();
+
+    /* Load LDOTUNE_CAL value from OTP into LDOTUNE Register as described in Section 2.5.5.11 page 18*/
+    uint64_t ldotune_cal_val = 0;
+    readBytesOTP(0x0004, (uint8_t*)&ldotune_cal_val, sizeof(uint64_t));
+    writeBytes(RF_CONF_ID, 0x30, (uint8_t*)&ldotune_cal_val, 5);
+
+    /* Ramp up SPI */
+    spiSetBaud(FAST_SPI);
+
+    return SUCCESS;
+}
+
+/**
  * @brief Write frame data to the TX buffer of the DW1000 and set the TX frame control register accordingly
  * 
  * @param data Pointer to the data to be transmitted
@@ -307,11 +427,11 @@ void DWMController::write_transmission_data(uint8_t* data, uint8_t len)
     writeBytes(TX_BUFFER_ID, NO_SUB_ADDRESS, data, len);
 
     /* Set Transmit Frame Length accordingly */
-    uint8_t tx_fctrl[TX_FCTRL_LEN] = {0};
-    readBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, tx_fctrl, TX_FCTRL_LEN);
-    tx_fctrl[0] &= ~TX_FCTRL_TFLEN_MASK; //< Clear current setting
-    tx_fctrl[0] |= len ; //< 7 bit TFLEN
-    writeBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&tx_fctrl, TX_FCTRL_LEN);
+    uint32_t tx_fctrl = 0;
+    readBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, &tx_fctrl);
+    tx_fctrl &= ~(TX_FCTRL_TFLEN_MASK | TX_FCTRL_TFLE_MASK); //< Clear current setting
+    tx_fctrl |= len ; //< 7 bit TFLEN
+    writeBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, tx_fctrl);
 }
 
 
@@ -379,15 +499,11 @@ uint8_t* DWMController::read_received_data(uint8_t* n)
 {
     /* get length of received data from Frame Info register */
     uint8_t len = getReceivedDataLength();
-    while (len <= 0) {
-        len = getReceivedDataLength();
-        busywait_nanoseconds(10000);
+    if (len <= 0) {
+        fprintf(stdout, "Invalid length: %d\n", len);
     }
     fprintf(stdout, "Received data with length: %d\n", len);
 
-    /* TODO: Check if FCS is good */
-
-    /* */
     uint8_t* rx_data = new uint8_t[len];
     if (rx_data == NULL) {
         fprintf(stderr, "Failed to allocate memory for received data\n");
@@ -429,40 +545,32 @@ void DWMController::get_rx_timestamp(DW1000Time& time)
  */
 dwm_com_error_t DWMController::poll_status_bit(uint64_t status_bit, uint64_t timeout)
 {
-    uint8_t sys_status[SYS_STATUS_LEN] = {0};
+    uint32_t sys_status = 0;
 
     timespec start, now;
 
     clock_gettime(CLOCK_MONOTONIC_RAW,  &start);
 
-    uint64_t status = 0;
     while (true) {
 
-        readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, sys_status, SYS_STATUS_LEN);
+        readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &sys_status);
         
-        status = 0;
-        for (int i = 0; i < SYS_STATUS_LEN; i++) {
-            status |= ((uint64_t)sys_status[i] << (i * 8));
-        }
-
-        if (status & status_bit) {
-            fprintf(stdout, "Status bit: 0x%08X\n", status);
+        if (sys_status & status_bit) {
+            fprintf(stdout, "Found event bit: 0x%08X\n", status_bit);
+            fprintf(stdout, "Sys Status: 0x%08X\n", sys_status);
             break;
         }
 
+        busywait_nanoseconds(100000); // optional delay to avoid hammering the SPI
 
-        clock_gettime(CLOCK_MONOTONIC_RAW, &now);
-        if (timespec_delta_nanoseconds(&now, &start) > timeout) {
+        //clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+        //if (timespec_delta_nanoseconds(&now, &start) > timeout) {
 
-        }
+        //}
 
-        busywait_nanoseconds(10000); // optional delay to avoid hammering the SPI
     }
 
-    status = status_bit;
-    writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, (uint8_t*)&status, SYS_STATUS_LEN);
-    readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, sys_status, SYS_STATUS_LEN);
-    fprintf(stdout, "Status bit: 0x%08X\n", sys_status);
+    clearStatusRegister();
 
     return SUCCESS;
 }
@@ -531,7 +639,7 @@ void DWMController::set_device_short_addr(uint16_t short_addr)
  */
 void DWMController::get_device_id(uint32_t* device_id)
 {
-    readBytes(DEV_ID_ID, NO_SUB_ADDRESS, (uint8_t*)device_id, DEV_ID_LEN);
+    readBytes(DEV_ID_ID, NO_SUB_ADDRESS, device_id);
 }
 
 
@@ -547,10 +655,9 @@ void DWMController::get_device_short_addr(uint16_t* short_addr)
 /**
  * 
  */
-dwm_com_error_t DWMController::test_transmission_timestamp(DW1000Time& tx_time)
+dwm_com_error_t DWMController::test_transmission_timestamp(DW1000Time& tx_time, uint32_t payload)
 {
-    uint32_t init_msg = 0x12345678;
-    write_transmission_data((uint8_t*)&init_msg, sizeof(uint32_t));
+    write_transmission_data((uint8_t*)&payload, sizeof(uint32_t));
     start_transmission();
     
     // poll and check for error
@@ -574,11 +681,10 @@ dwm_com_error_t DWMController::test_receiving_timestamp(DW1000Time& rx_time)
     uint8_t ack_len;
 
     start_receiving();
-    // poll and check for error
-    //dwm_com_error_t rx_state = poll_rx_status();
-    //if (rx_state == ERROR) {
-    //    return ERROR;
-    //}
+
+    poll_rx_status();
+
+    /* we should have data in our buffer */
     msg = read_received_data(&ack_len);
 
     if (msg == NULL) {
@@ -586,7 +692,7 @@ dwm_com_error_t DWMController::test_receiving_timestamp(DW1000Time& rx_time)
         return ERROR;
     }
 
-    fprintf(stdout, "Received data[%d]: 0x%02X\n", 0, msg[0]);
+    fprintf(stdout, "Received data: 0x%02X", msg[0]);
     for (uint8_t i = 1; i < ack_len; i++) {
         fprintf(stdout, " 0x%02X", msg[i]);
     }
@@ -660,9 +766,7 @@ void DWMController::readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint3
  */
 void DWMController::readBytes(uint8_t reg, uint16_t offset, uint32_t* data)
 {
-    uint8_t cache[4] = {0};
-    readBytes(reg, offset, cache, 4);
-    *data = (cache[3]) << 24 |  (cache[2]) << 16 | (cache[1]) << 8 | (cache[0]);
+    readBytes(reg, offset, (uint8_t*)data, 4);
 }
 
 
@@ -719,7 +823,6 @@ void DWMController::writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint
  */
 void DWMController::writeBytes(uint8_t reg, uint16_t offset, uint32_t data)
 {
-    //data = __builtin_bswap32(data); // swap to little endian decoding before writing as uint8_t array
     writeBytes(reg, offset, (uint8_t*)&data, sizeof(uint32_t));
 }
 
@@ -770,21 +873,35 @@ void DWMController::_readBytesOTP(uint16_t addr, uint8_t* data)
  *        FCS (CRC) to validate the received data
  */
 uint8_t DWMController::getReceivedDataLength() {
-    uint8_t data[RX_FINFO_LEN] = {0};
-    readBytes(RX_FINFO_ID, NO_SUB_ADDRESS, data, RX_FINFO_LEN);
+    uint32_t data = 0;
+    readBytes(RX_FINFO_ID, NO_SUB_ADDRESS, &data);
 
     /* Get the length of the received data */
-    uint8_t len = (data[0] & RX_FINFO_RXFLEN_MASK);
+    uint16_t len = data & (RX_FINFO_RXFLE_MASK | RX_FINFO_RXFLEN_MASK);
     return len;
 }
 
 
+/**
+ * @brief Clear RX_FINFO register
+ */
 void DWMController::deleteReceivedDataLength()
 {
     uint32_t data = 0;
     
-    data = ~(RX_FINFO_RXFLE_MASK | RX_FINFO_RXFLEN_MASK);
+    //data = ~(RX_FINFO_RXFLE_MASK | RX_FINFO_RXFLEN_MASK);
     writeBytes(RX_FINFO_ID, NO_SUB_ADDRESS, data);
+}
+
+
+/**
+ * @brief Clear all status bits in the SYS_STATUS register 
+ */
+void DWMController::clearStatusRegister()
+{
+    uint8_t data[SYS_STATUS_LEN] = {0};
+    memset(data, 0xFF, SYS_STATUS_LEN);
+    writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, data, SYS_STATUS_LEN);
 }
 
 
@@ -814,19 +931,19 @@ void DWMController::setSysClockSource(uint8_t source)
     switch (source)
     {
     case AUTO_CLOCK:
-        //spiSetBaud(FAST_SPI);
+        spiSetBaud(FAST_SPI);
         pmsc_ctrl &= ~(0x3UL); //< clear sysclk bits
         pmsc_ctrl |= PMSC_CTRL0_SYSCLKS_AUTO; //< set sysclk to auto
         break;
     
     case XTI_CLOCK:
-        //spiSetBaud(SLOW_SPI);
+        spiSetBaud(SLOW_SPI);
         pmsc_ctrl &= ~(0x3UL); //< clear sysclk bits
         pmsc_ctrl |= PMSC_CTRL0_SYSCLKS_19M; //< set sysclk to xti
         break;
 
     case PLL_CLOCK:
-        //spiSetBaud(FAST_SPI);
+        spiSetBaud(FAST_SPI);
         pmsc_ctrl &= ~(0x3UL); //< clear sysclk bits
         pmsc_ctrl |= PMSC_CTRL0_SYSCLKS_125M; //< set sysclk to pll
         break;

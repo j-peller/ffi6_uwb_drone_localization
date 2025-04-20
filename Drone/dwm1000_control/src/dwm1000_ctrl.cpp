@@ -716,7 +716,7 @@ dwm_com_error_t DWMController::test_receiving_timestamp(DW1000Time& rx_time)
     get_rx_timestamp(rx_time);
 
     /* cleanup */
-    delete byte_array;
+    delete msg;
 
     return SUCCESS;
 }

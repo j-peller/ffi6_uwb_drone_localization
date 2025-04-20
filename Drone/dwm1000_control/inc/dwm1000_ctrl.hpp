@@ -160,7 +160,7 @@ public:
     void get_device_short_addr(uint16_t* short_addr);
 
     /* Testing Functions */
-    dwm_com_error_t test_transmission_timestamp(DW1000Time& tx_time, uint32_t payload);
+    dwm_com_error_t test_transmission_timestamp(DW1000Time& tx_time, uint8_t* payload);
     dwm_com_error_t test_receiving_timestamp(DW1000Time& rx_time);
     
     

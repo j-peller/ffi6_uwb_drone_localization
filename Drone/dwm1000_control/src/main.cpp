@@ -74,12 +74,24 @@ int main() {
         usleep(1000000);
     }
 
-    //DW1000Time tx_time;
-    //uint32_t i = 0;
-    //while(1) {
-    //    controller->test_transmission_timestamp(tx_time, i++);
-    //    fprintf(stdout, "TX Timestamp: %lu\n", tx_time.get_timestamp());
-    //}
+    DW1000Time tx_time;
+    twr_message_t msg = {
+            .header = (twr_frame_header_t) {
+                .frameCtrl = {0x41, 0x88},
+                .seqNum = 0x00,
+                .panID = {0xCA, 0xDE},
+                .destAddr = { 0xFE, 0xAF },
+                .srcAddr = { MASTER & 0xff, MASTER >> 8 }
+            },
+            .payload = { .report = {
+                .type = twr_msg_type_t::TWR_MSG_TYPE_REPORT,
+                .finalTx = {0x12, 0x34, 0x56, 0x78, 0x9A}}}
+    };
+
+    while(1) {
+        controller->test_transmission_timestamp(tx_time, (uint8_t*)&msg);
+        fprintf(stdout, "TX Timestamp: %lu\n", tx_time.get_timestamp());
+    }
 
 
     return EXIT_SUCCESS;

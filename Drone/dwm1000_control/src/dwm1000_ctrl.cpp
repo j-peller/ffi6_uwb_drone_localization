@@ -291,7 +291,9 @@ dwm_com_error_t DWMController::set_mode(Mode mode)
     readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
 
     //sys_cfg |= SYS_CFG_FFE;         //< Enable Frame Filtering. This requires SHORT_ADDR to be set beforehand.
-    sys_cfg |= SYS_CFG_FFAD;        //< Allow Data Frame
+    //sys_cfg |= SYS_CFG_FFAD;        //< Allow Data Frame
+    sys_cfg &= ~SYS_CFG_FFE;
+    sys_cfg &= ~SYS_CFG_FFAD;
     sys_cfg |= SYS_CFG_PHR_MODE_00; //< Standard Frame mode IEEE 802.15.4 compliant
     sys_cfg |= mode.bitrate.rxm110k;
 
@@ -655,9 +657,9 @@ void DWMController::get_device_short_addr(uint16_t* short_addr)
 /**
  * 
  */
-dwm_com_error_t DWMController::test_transmission_timestamp(DW1000Time& tx_time, uint32_t payload)
+dwm_com_error_t DWMController::test_transmission_timestamp(DW1000Time& tx_time, uint8_t* payload)
 {
-    write_transmission_data((uint8_t*)&payload, sizeof(uint32_t));
+    write_transmission_data(payload, sizeof(twr_message_t));
     start_transmission();
     
     // poll and check for error
@@ -677,7 +679,8 @@ dwm_com_error_t DWMController::test_transmission_timestamp(DW1000Time& tx_time, 
  */
 dwm_com_error_t DWMController::test_receiving_timestamp(DW1000Time& rx_time)
 {
-    uint8_t* msg;
+    twr_message_t* msg;
+
     uint8_t ack_len;
 
     start_receiving();
@@ -685,22 +688,35 @@ dwm_com_error_t DWMController::test_receiving_timestamp(DW1000Time& rx_time)
     poll_rx_status();
 
     /* we should have data in our buffer */
-    msg = read_received_data(&ack_len);
+    msg = (twr_message_t*) read_received_data(&ack_len);
 
-    if (msg == NULL) {
+    if ( msg == NULL) {
         fprintf(stderr, "Failed to read received data\n");
         return ERROR;
     }
 
-    fprintf(stdout, "Received data: 0x%02X", msg[0]);
-    for (uint8_t i = 1; i < ack_len; i++) {
-        fprintf(stdout, " 0x%02X", msg[i]);
-    }
+    fprintf(stdout,
+        "TWR Message Frame:\n"
+        "  Frame Control     : 0x%02X 0x%02X\n"
+        "  Sequence Number   : 0x%02X\n"
+        "  PAN ID            : 0x%02X 0x%02X\n"
+        "  Destination Addr  : 0x%02X 0x%02X\n"
+        "  Source Addr       : 0x%02X 0x%02X\n"
+        "  Message Type      : 0x%02X\n"
+        "  Anchor Short Addr : 0x%02X%02X%02X%02X%02X\n",
+        msg->header.frameCtrl[0], msg->header.frameCtrl[1],
+        msg->header.seqNum,
+        msg->header.panID[0], msg->header.panID[1],
+        msg->header.destAddr[0], msg->header.destAddr[1],
+        msg->header.srcAddr[0], msg->header.srcAddr[1],
+        msg->payload.report.type,
+        msg->payload.report.finalTx[0], msg->payload.report.finalTx[1], msg->payload.report.finalTx[2], msg->payload.report.finalTx[3], msg->payload.report.finalTx[4]
+    );
 
     get_rx_timestamp(rx_time);
 
     /* cleanup */
-    delete msg;
+    delete byte_array;
 
     return SUCCESS;
 }
@@ -913,8 +929,6 @@ void DWMController::clearStatusRegister()
  */
 void DWMController::forceIdle() {
     uint32_t sys_ctrl = SYS_CTRL_TRXOFF;
-
-    this->_dev_mode = IDLE_MODE;
 
     writeBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_ctrl ,SYS_CTRL_LEN);
 }

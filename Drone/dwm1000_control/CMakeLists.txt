@@ -37,8 +37,8 @@ target_link_libraries(${PROJECT_NAME} Eigen3::Eigen gpiod)
 
 # Enable testing
 #enable_testing()
-#
-## Google Test Integration
+
+# Google Test Integration
 #include(FetchContent)
 #FetchContent_Declare(
 #  googletest
@@ -46,15 +46,15 @@ target_link_libraries(${PROJECT_NAME} Eigen3::Eigen gpiod)
 #  GIT_TAG        v1.16.0  # You can change the tag to the latest stable release
 #)
 #FetchContent_MakeAvailable(googletest)
-#
-## Include directories for Google Test
+
+# Include directories for Google Test
 #include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
-#
-## Add a test executable for unit tests
+
+# Add a test executable for unit tests
 #add_executable(DW1000TimeTests "test/dw1000_time_test.cpp" "src/dw1000_time.cpp")
-#
-## Link the test executable with Google Test and the project source
+
+# Link the test executable with Google Test and the project source
 #target_link_libraries(DW1000TimeTests gtest gtest_main)
-#
-## Run tests after the build
+
+# Run tests after the build
 #add_test(NAME DW1000TimeTests COMMAND DW1000TimeTests)

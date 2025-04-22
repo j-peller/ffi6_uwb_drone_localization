@@ -5,7 +5,6 @@
 
 #include "dwm1000_ctrl.hpp"
 #include "dw1000_time.hpp"
-#include "dwm1000_device.hpp"
 #include "../../../shared/inc/constants.hpp"
 #include "../../../shared/inc/helpers.hpp"
 #include "../../../shared/inc/anchor_addresses.hpp"

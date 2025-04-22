@@ -128,22 +128,28 @@ public:
     dwm_com_error_t set_mode(Mode mode);
 
     /* Transmission */
-    void write_transmission_data(uint8_t* data, uint8_t len);
+    dwm_com_error_t write_transmission_data(uint8_t* data, uint8_t len);
     void start_transmission();
     void get_tx_timestamp(DW1000Time& time);
 
     /* Receiving */
-    void start_receiving();
-    uint8_t* read_received_data(uint8_t* len);
+    dwm_com_error_t start_receiving();
+    dwm_com_error_t read_received_data(uint16_t* len_out, uint8_t** data_out);
     void get_rx_timestamp(DW1000Time& time);
 
     /* Poll Status Bit */
-    dwm_com_error_t poll_status_bit(uint64_t status_bit, uint64_t timeout);
+    dwm_com_error_t poll_status_bit(uint32_t status_bit, uint64_t timeout);
 
+    /**
+     * @brief All TX events
+     */
     inline dwm_com_error_t poll_tx_status() {
         return poll_status_bit(SYS_STATUS_ALL_TX, DW1000_TIMEOUT);
     }
 
+    /**
+     * @brief All RX events after a correct packet reception
+     */
     inline dwm_com_error_t poll_rx_status() {
         return poll_status_bit(SYS_STATUS_ALL_RX_GOOD, RX_TIMEOUT);
     }
@@ -154,10 +160,12 @@ public:
 
     /* Setters */
     void set_device_short_addr(uint16_t short_addr);
+    void set_device_pan_id(uint16_t pan_id);
 
     /* Getters */
     void get_device_id(uint32_t* device_id);
     void get_device_short_addr(uint16_t* short_addr);
+    void get_device_pan_id(uint16_t* pan_id);
 
     /* Testing Functions */
     dwm_com_error_t test_transmission_timestamp(DW1000Time& tx_time, uint8_t* payload);
@@ -178,9 +186,9 @@ private:
     void _readBytesOTP(uint16_t addr, uint8_t* data);
 
     /* helpers */
-    uint8_t getReceivedDataLength();
+    uint16_t getReceivedDataLength();
     void deleteReceivedDataLength();
-    void clearStatusRegister();
+    void clearStatusEvent(uint64_t event_mask);
     
     /* DW1000 Mode Control */
     void forceIdle();
@@ -197,6 +205,7 @@ private:
 private:
     int                     _spi_fd;
     uint32_t                _cur_spi_baud;
+    uint64_t                _last_sys_status;
     dw1000_dev_instance_t   _dev_instance;
 
     /* GPIO Control for Reset */

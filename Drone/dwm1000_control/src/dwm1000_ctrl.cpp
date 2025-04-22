@@ -97,30 +97,40 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
         close(fd);
         return NULL;
     }
-    
+
     fprintf(stdout, "DWM1000 detected with ID: 0x%08X\n", device_id);
 
     /* Test SPI Write - and Read Back Value */
     instance->set_device_short_addr(MASTER);
-    uint16_t read_back = 0;
-    instance->get_device_short_addr(&read_back);
-    if (read_back != MASTER) {
-        fprintf(stderr, "DWM1000 returned invalid Short Address: 0x%04X\n", read_back);
+    uint16_t short_addr_read_back = 0;
+    instance->get_device_short_addr(&short_addr_read_back);
+    if (short_addr_read_back != MASTER) {
+        fprintf(stderr, "DWM1000 returned invalid Short Address: 0x%04X\n", short_addr_read_back);
         perror("DWM1000 not detected or SPI not working");
         delete instance;
         close(fd);
         return NULL;
     }
 
-    fprintf(stdout, "DWM1000 Setup successful with Short Address: 0x%04X\n", read_back);
+    instance->set_device_pan_id(DEFAULT_PAN);
+    uint16_t pan_id_read_back = 0;
+    instance->get_device_pan_id(&pan_id_read_back);
+    if (pan_id_read_back != DEFAULT_PAN) {
+        fprintf(stderr, "DWM1000 returned invalid PAN ID: 0x%04X\n", pan_id_read_back);
+        perror("DWM1000 not detected or SPI not working");
+        delete instance;
+        close(fd);
+        return NULL;
+    }
 
+    fprintf(stdout, "DWM1000 Setup successful!\n\t - Short Address:\t0x%04X\n\t - PAN ID:\t\t0x%04X\n", short_addr_read_back, pan_id_read_back);
 
     return instance;
 }
 
 
 DWMController::DWMController(int spi_fd, dw1000_dev_instance_t* device)
-    : _spi_fd(spi_fd), _dev_instance(*device), _cur_spi_baud(device->spi_baudrate), _gpio_chip(NULL), _rst_line(NULL)
+    : _spi_fd(spi_fd), _cur_spi_baud(device->spi_baudrate), _last_sys_status(0),  _dev_instance(*device),  _gpio_chip(NULL), _rst_line(NULL)
 {
     spiSetBaud(device->spi_baudrate);
 }   
@@ -290,10 +300,10 @@ dwm_com_error_t DWMController::set_mode(Mode mode)
     uint32_t sys_cfg = 0;
     readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
 
-    //sys_cfg |= SYS_CFG_FFE;         //< Enable Frame Filtering. This requires SHORT_ADDR to be set beforehand.
-    //sys_cfg |= SYS_CFG_FFAD;        //< Allow Data Frame
-    sys_cfg &= ~SYS_CFG_FFE;
-    sys_cfg &= ~SYS_CFG_FFAD;
+    sys_cfg |= SYS_CFG_FFE;         //< Enable Frame Filtering. This requires SHORT_ADDR to be set beforehand.
+    sys_cfg |= SYS_CFG_FFAD;        //< Allow Data Frame
+    //sys_cfg &= ~SYS_CFG_FFE;
+    //sys_cfg &= ~SYS_CFG_FFAD;
     sys_cfg |= SYS_CFG_PHR_MODE_00; //< Standard Frame mode IEEE 802.15.4 compliant
     sys_cfg |= mode.bitrate.rxm110k;
 
@@ -415,18 +425,18 @@ dwm_com_error_t DWMController::set_mode(Mode mode)
  *        This length includes the two-octet CRC appended automatically at the end of the frame, 
  *        unless SFCST (in Register file: 0x0D – System Control Register) is use to suppress the FCS.
  */
-void DWMController::write_transmission_data(uint8_t* data, uint8_t len)
+dwm_com_error_t DWMController::write_transmission_data(uint8_t* data_in, uint8_t len)
 {
-    if (data == NULL || len == 0) {
+    if (data_in == NULL || len == 0) {
         fprintf(stderr, "Invalid data or length for transmission\n");
-        return;
+        return ERROR;
     }
 
     /* TODO: Check if CRC is used, right now we always use crc*/
     len = (len + 2) & TX_FCTRL_TFLEN_MASK;
 
     /* Write the data to be transmitted */
-    writeBytes(TX_BUFFER_ID, NO_SUB_ADDRESS, data, len);
+    writeBytes(TX_BUFFER_ID, NO_SUB_ADDRESS, data_in, len);
 
     /* Set Transmit Frame Length accordingly */
     uint32_t tx_fctrl = 0;
@@ -434,6 +444,8 @@ void DWMController::write_transmission_data(uint8_t* data, uint8_t len)
     tx_fctrl &= ~(TX_FCTRL_TFLEN_MASK | TX_FCTRL_TFLE_MASK); //< Clear current setting
     tx_fctrl |= len ; //< 7 bit TFLEN
     writeBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, tx_fctrl);
+
+    return SUCCESS;
 }
 
 
@@ -448,12 +460,12 @@ void DWMController::start_transmission() {
     /* Idle mode required to start new transmission */
     this->forceIdle();
 
-    /* currently not required to keep track of DW1000 operating mode */
-    //this->_dev_mode = TX_MODE;
+    /* clear tx status registers */
+    clearStatusEvent(SYS_STATUS_ALL_TX);
 
     /* WAIT4RESP maybe an option here to enable the receiver immediatly after transmission completed */
-    uint32_t sys_ctrl = SYS_CTRL_TXSTRT;
-    writeBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_ctrl ,SYS_CTRL_LEN);
+    /* Start Receiver */
+    writeBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, SYS_CTRL_TXSTRT);
 }
 
 
@@ -477,50 +489,62 @@ void DWMController::get_tx_timestamp(DW1000Time& time)
  *        This method sets the RXENAB bit in the SYS_CTRL register,
  *        which commands the DW1000 to begin receiving.
  */
-void DWMController::start_receiving() 
+dwm_com_error_t DWMController::start_receiving() 
 {
     /* Idle mode required */
-    this->forceIdle();
+    forceIdle();
 
-    /* currently not required to keep track of DW1000 operating mode */
-    //this->_dev_mode = RX_MODE;
+    /* clear all rx status registers */
+    clearStatusEvent(SYS_STATUS_ALL_RX_GOOD | SYS_STATUS_ALL_RX_ERR);
 
-    uint32_t sys_ctrl = SYS_CTRL_RXENAB;
-    writeBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_ctrl ,SYS_CTRL_LEN);
+    /* Start Receiver */
+    writeBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, SYS_CTRL_RXENAB);
+
+    return SUCCESS;
 }
 
 
 /**
  * @brief Read len bytes of received data from the RX buffer of the DW1000
  * 
- * @param data Pointer to the buffer to store the received data
- * @param n Pointer to the variable to store the length of the received data
+ * @param len_out Pointer to the variable to store the length of the received data
+ * @return Pointer to buffer containing received data
  *
  */
-uint8_t* DWMController::read_received_data(uint8_t* n)
+dwm_com_error_t DWMController::read_received_data(uint16_t* len_out, uint8_t** data_out)
 {
+    /* FCS Error */
+    if (_last_sys_status & SYS_STATUS_RXFCE) {
+        fprintf(stdout, "Error in FCS\n");
+        return ERROR;
+    }
+
     /* get length of received data from Frame Info register */
     uint8_t len = getReceivedDataLength();
     if (len <= 0) {
         fprintf(stdout, "Invalid length: %d\n", len);
+        return ERROR;
     }
     fprintf(stdout, "Received data with length: %d\n", len);
 
     uint8_t* rx_data = new uint8_t[len];
     if (rx_data == NULL) {
         fprintf(stderr, "Failed to allocate memory for received data\n");
-        return NULL;
+        return ERROR;
     }
 
     /* Read received data from RX_BUFFER of DW1000 */
     readBytes(RX_BUFFER_ID, NO_SUB_ADDRESS, rx_data, len);
 
     /* update the length of the received buffer */
-    *n = len;
+    *len_out = len;
+    *data_out = rx_data;
 
+    /* delte length information in RX_FINFO register */
     deleteReceivedDataLength();
 
-    return rx_data;
+    /* return received data */
+    return SUCCESS;
 }
 
 
@@ -545,7 +569,7 @@ void DWMController::get_rx_timestamp(DW1000Time& time)
  * 
  * TODO: may not continously poll for status bits via SPI. Consider using interrupts via GPIO pins
  */
-dwm_com_error_t DWMController::poll_status_bit(uint64_t status_bit, uint64_t timeout)
+dwm_com_error_t DWMController::poll_status_bit(uint32_t status_bit, uint64_t timeout)
 {
     uint32_t sys_status = 0;
 
@@ -555,24 +579,24 @@ dwm_com_error_t DWMController::poll_status_bit(uint64_t status_bit, uint64_t tim
 
     while (true) {
 
+        /* we are only interested in the first 32bits... */
         readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &sys_status);
         
         if (sys_status & status_bit) {
-            fprintf(stdout, "Found event bit: 0x%08X\n", status_bit);
-            fprintf(stdout, "Sys Status: 0x%08X\n", sys_status);
+            _last_sys_status = sys_status;
             break;
         }
 
-        busywait_nanoseconds(100000); // optional delay to avoid hammering the SPI
+        /* prevent hammering the SPI */
+        busywait_nanoseconds(10000);
 
-        //clock_gettime(CLOCK_MONOTONIC_RAW, &now);
-        //if (timespec_delta_nanoseconds(&now, &start) > timeout) {
 
-        //}
-
+        clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+        if (timespec_delta_nanoseconds(&now, &start) > timeout) {
+            return TIMEOUT;
+        }
+        
     }
-
-    clearStatusRegister();
 
     return SUCCESS;
 }
@@ -585,22 +609,22 @@ dwm_com_error_t DWMController::poll_status_bit(uint64_t status_bit, uint64_t tim
 void DWMController::reset()
 {
     /*  */
-    gpiod_line_request_output(this->_rst_line, "DWM1000Reset", 0);
+    gpiod_line_request_output(_rst_line, "DWM1000Reset", 0);
 
     /* */
-    gpiod_line_set_value(this->_rst_line, 0);
+    gpiod_line_set_value(_rst_line, 0);
 
     /* Reset Pin should be manually driven low for at least 50ns to ensure correct reset operation */
     busywait_nanoseconds(1000);
 
     /* */
-    gpiod_line_request_input(this->_rst_line, "DWM1000Reset");
+    gpiod_line_request_input(_rst_line, "DWM1000Reset");
 
     /* busywait for 10ms */
     busywait_nanoseconds(10000000);
 
     /* Force the DWM1000 into idle mode */
-    this->forceIdle();
+    forceIdle();
 }
 
 
@@ -635,6 +659,15 @@ void DWMController::set_device_short_addr(uint16_t short_addr)
 
 
 /**
+ * 
+ */
+void DWMController::set_device_pan_id(uint16_t pan_id)
+{
+    writeBytes(PANADR_ID, PANADR_PAN_ID_OFFSET, (uint8_t*)&pan_id, sizeof(uint16_t));
+}
+
+
+/**
  * @brief Get the device ID of the DWM1000 -- Read from the DEV_ID register = 0x00
  * @param device_id Pointer to store the device ID
  * 
@@ -657,17 +690,35 @@ void DWMController::get_device_short_addr(uint16_t* short_addr)
 /**
  * 
  */
+void DWMController::get_device_pan_id(uint16_t* pan_id)
+{
+    readBytes(PANADR_ID, PANADR_PAN_ID_OFFSET, (uint8_t*)pan_id, sizeof(uint16_t));
+}
+
+
+/**
+ * 
+ */
 dwm_com_error_t DWMController::test_transmission_timestamp(DW1000Time& tx_time, uint8_t* payload)
 {
-    write_transmission_data(payload, sizeof(twr_message_t));
+    dwm_com_error_t ret = SUCCESS;
+
+    /* write our payload to transmit buffer */
+    ret = write_transmission_data(payload, sizeof(twr_message_t));
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    /* start transmission of our data */
     start_transmission();
     
-    // poll and check for error
-    dwm_com_error_t tx_state = poll_tx_status();
-    if (tx_state == dwm_com_error_t::ERROR) {
-        return dwm_com_error_t::ERROR;
+    /* wait until our data has been successfully transmitted */
+    ret = poll_tx_status();
+    if (ret != SUCCESS) {
+        return ret;
     }
     
+    /* get transmission timestamp */
     get_tx_timestamp(tx_time);
 
     return SUCCESS;
@@ -675,26 +726,33 @@ dwm_com_error_t DWMController::test_transmission_timestamp(DW1000Time& tx_time, 
 
 
 /**
- * 
+ * @brief Simple test procedure for receiving a packet 
  */
 dwm_com_error_t DWMController::test_receiving_timestamp(DW1000Time& rx_time)
 {
     twr_message_t* msg;
+    uint16_t ack_len;
+    dwm_com_error_t ret = SUCCESS;
 
-    uint8_t ack_len;
-
-    start_receiving();
-
-    poll_rx_status();
-
-    /* we should have data in our buffer */
-    msg = (twr_message_t*) read_received_data(&ack_len);
-
-    if ( msg == NULL) {
-        fprintf(stderr, "Failed to read received data\n");
-        return ERROR;
+    /* Start receiver */
+    ret = start_receiving();
+    if (ret != SUCCESS) {
+        return ret;
     }
 
+    /* Poll for successfull reception of a packet */
+    ret = poll_rx_status();
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    /* we should now have data in our buffer */
+    ret = read_received_data(&ack_len, (uint8_t**)&msg);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    /* Printout received data packet */
     fprintf(stdout,
         "TWR Message Frame:\n"
         "  Frame Control     : 0x%02X 0x%02X\n"
@@ -703,7 +761,7 @@ dwm_com_error_t DWMController::test_receiving_timestamp(DW1000Time& rx_time)
         "  Destination Addr  : 0x%02X 0x%02X\n"
         "  Source Addr       : 0x%02X 0x%02X\n"
         "  Message Type      : 0x%02X\n"
-        "  Anchor Short Addr : 0x%02X%02X%02X%02X%02X\n",
+        "  Final Timestamp   : 0x%02X%02X%02X%02X%02X\n",
         msg->header.frameCtrl[0], msg->header.frameCtrl[1],
         msg->header.seqNum,
         msg->header.panID[0], msg->header.panID[1],
@@ -713,12 +771,13 @@ dwm_com_error_t DWMController::test_receiving_timestamp(DW1000Time& rx_time)
         msg->payload.report.finalTx[0], msg->payload.report.finalTx[1], msg->payload.report.finalTx[2], msg->payload.report.finalTx[3], msg->payload.report.finalTx[4]
     );
 
+    /* */
     get_rx_timestamp(rx_time);
 
     /* cleanup */
     delete msg;
 
-    return SUCCESS;
+    return ret;
 }
 
 
@@ -888,13 +947,17 @@ void DWMController::_readBytesOTP(uint16_t addr, uint8_t* data)
  *        used in the receiver to know how much data to receive and decode, and where to find the 
  *        FCS (CRC) to validate the received data
  */
-uint8_t DWMController::getReceivedDataLength() {
+uint16_t DWMController::getReceivedDataLength() {
     uint32_t data = 0;
     readBytes(RX_FINFO_ID, NO_SUB_ADDRESS, &data);
 
     /* Get the length of the received data */
     uint16_t len = data & (RX_FINFO_RXFLE_MASK | RX_FINFO_RXFLEN_MASK);
-    return len;
+
+    if (len > 2)
+        len -= 2;
+
+    return len; //< minus 2 bytes for FCS data
 }
 
 
@@ -911,13 +974,15 @@ void DWMController::deleteReceivedDataLength()
 
 
 /**
- * @brief Clear all status bits in the SYS_STATUS register 
+ * @brief Clear status bits in SYS_STATUS register
  */
-void DWMController::clearStatusRegister()
+void DWMController::clearStatusEvent(uint64_t event_mask)
 {
-    uint8_t data[SYS_STATUS_LEN] = {0};
-    memset(data, 0xFF, SYS_STATUS_LEN);
-    writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, data, SYS_STATUS_LEN);
+    uint8_t sys_status[SYS_STATUS_LEN] = {0};
+
+    memcpy(sys_status, &event_mask, SYS_STATUS_LEN);
+
+    writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, sys_status, SYS_STATUS_LEN);
 }
 
 

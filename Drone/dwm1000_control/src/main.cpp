@@ -69,14 +69,17 @@ int main() {
     DW1000Time rx_time;
     /* after reception it will clear its state and go to idle */
     while(1) {
-        controller->test_receiving_timestamp(rx_time);
-        fprintf(stdout, "RX Timestamp: %lu\n", rx_time.get_timestamp());
+        if (controller->test_receiving_timestamp(rx_time) == SUCCESS) {
+            fprintf(stdout, "RX Timestamp: %lu\n", rx_time.get_timestamp());
+        } else {
+            fprintf(stdout, "Some Error\n");
+        }
         usleep(1000000);
     }
 
     DW1000Time tx_time;
     twr_message_t msg = {
-            .header = (twr_frame_header_t) {
+            .header = {
                 .frameCtrl = {0x41, 0x88},
                 .seqNum = 0x00,
                 .panID = {0xCA, 0xDE},
@@ -88,9 +91,16 @@ int main() {
                 .finalTx = {0x12, 0x34, 0x56, 0x78, 0x9A}}}
     };
 
+    uint64_t ts = 0;
     while(1) {
-        controller->test_transmission_timestamp(tx_time, (uint8_t*)&msg);
-        fprintf(stdout, "TX Timestamp: %lu\n", tx_time.get_timestamp());
+        ts++;
+        memcpy(msg.payload.report.finalTx, &ts, 5);
+        if (controller->test_transmission_timestamp(tx_time, (uint8_t*)&msg) == SUCCESS) {
+            fprintf(stdout, "TX Timestamp: %lu\n", tx_time.get_timestamp());
+        } else {
+            fprintf(stdout, "Some Error\n");
+        }
+        usleep(1000000);
     }
 
 

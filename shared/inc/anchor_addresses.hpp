@@ -21,4 +21,7 @@
 /* Short Address of the UWB Master*/
 #define MASTER      0xB00B
 
+/* PAN ID */
+#define DEFAULT_PAN 0xDECA
+
 #endif

@@ -128,17 +128,23 @@ dwm_com_error_t DWMRanging::do_init_state(DW1000Time& init_tx_ts, uint16_t ancho
  */
 dwm_com_error_t DWMRanging::do_response_ack_state(DW1000Time& ack_rx_ts)
 {
-    twr_message_t* ack_return;
-    uint8_t ack_len;
+    twr_message_t* ack_return = NULL;
+    uint16_t ack_len;
+    dwm_com_error_t ret = SUCCESS;  
 
     _controller->start_receiving();
     // poll and check for error
-    dwm_com_error_t tx_state = _controller->poll_rx_status();
-    if (tx_state == dwm_com_error_t::ERROR) {
+    ret = _controller->poll_rx_status();
+    if (ret != ERROR) {
         waitOutError();
-        return dwm_com_error_t::ERROR;
+        return ret;
     }
-    ack_return = (twr_message_t*) _controller->read_received_data(&ack_len);
+    ret = _controller->read_received_data(&ack_len, (uint8_t**)&ack_return);
+    if (ret != SUCCESS) {
+        /* Error handling */
+        return ret;
+    }
+
     _controller->get_rx_timestamp(ack_rx_ts);
     
     if (ack_return->payload.response.type != twr_msg_type_t::TWR_MSG_TYPE_RESPONSE) {
@@ -196,16 +202,22 @@ dwm_com_error_t DWMRanging::do_final_state(DW1000Time& fin_tx_ts, uint16_t ancho
 dwm_com_error_t DWMRanging::do_report_state(DW1000Time& esp_init_rx_ts, DW1000Time& esp_resp_tx_ts, DW1000Time& esp_fin_rx_ts) 
 {
     twr_message_t* rprt_return;
-    uint8_t rprt_len;
+    uint16_t rprt_len;
+    dwm_com_error_t ret = SUCCESS;
 
     _controller->start_receiving();
     // poll and check for error
-    dwm_com_error_t tx_state = _controller->poll_rx_status();
-    if (tx_state == dwm_com_error_t::ERROR) {
+    ret = _controller->poll_rx_status();
+    if (ret != SUCCESS) {
         waitOutError();
-        return dwm_com_error_t::ERROR;
+        return ret;
     }
-    rprt_return = (twr_message_t*) _controller->read_received_data(&rprt_len);
+
+    ret = _controller->read_received_data(&rprt_len, (uint8_t**)&rprt_return);
+    if (ret != SUCCESS) {
+        /* TODO Error handling */
+        return ret;
+    }
     
     if (rprt_return->payload.report.type != twr_msg_type_t::TWR_MSG_TYPE_REPORT) {
         waitOutError();

@@ -13,6 +13,7 @@
 typedef enum : uint8_t {
     SUCCESS = 0x00,
     ERROR   = 0x01,
+    TIMEOUT = 0x02,
 } dwm_com_error_t;
 
 #endif

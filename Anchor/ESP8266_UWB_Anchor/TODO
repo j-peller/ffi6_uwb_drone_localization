@@ -14,3 +14,5 @@ MEASUREMENT_WAITING: Wartet halt auf interrupt, man könnte eventuell etwas schn
 MEASUREMENT_ACTIVE: Ist nicht da wo das Programm sein sollte, so schnell wie möglich raus!
 
 remove interrupttable and use register defines instead
+
+Man könnte statt nur text eventuell auch einen konsistenten state loggen

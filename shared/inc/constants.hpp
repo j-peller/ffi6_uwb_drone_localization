@@ -29,6 +29,10 @@ static inline uint64_t timespec_delta_nanoseconds(struct timespec* end, struct t
 /**
  * @brief Busy wait for a specified number of nanoseconds.
  */
+/*
+
+Kann das nicht compilen - Mario
+
 static inline void busywait_nanoseconds(uint64_t ns) {
     struct timespec start, now;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
@@ -36,5 +40,5 @@ static inline void busywait_nanoseconds(uint64_t ns) {
         clock_gettime(CLOCK_MONOTONIC_RAW, &now);
     } while (timespec_delta_nanoseconds(&now, &start) < ns);
 }
-
+*/
 #endif

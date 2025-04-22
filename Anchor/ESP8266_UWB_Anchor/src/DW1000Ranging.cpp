@@ -2,9 +2,8 @@
 
 uint16_t pan = 0xDECA;
 
-DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType(deviceType), dw1000(dw1000)
+DW1000Ranging::DW1000Ranging(DW1000 &dw1000) : dw1000(dw1000)
 {
-    this->deviceType = deviceType;
     this->dw1000 = dw1000;
     delay(1000);
     //dw1000.soft_reset();
@@ -33,19 +32,7 @@ DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType
     
     dw1000.loadLDECode();
     dw1000.setPANAdress(pan);
-    
-    switch (this->deviceType)
-    {
-        case TAG:
-            interrupts |= InterruptTable::INTERRUPT_ALL;
-            break;
-        case ANCHOR:
-            interrupts |= InterruptTable::INTERRUPT_ALL;
-            dw1000.setReceiverAutoReenable(true);
-            break;
-        default:
-            break;
-    }
+    interrupts |= InterruptTable::INTERRUPT_ALL;
     dw1000.enableInterrupts(interrupts);
    
     dw1000.setMode(thotro110);
@@ -64,4 +51,13 @@ void DW1000Ranging::loop()
 void DW1000Ranging::twr_send(twr_message_t message)
 {
 
+}
+
+void DW1000Ranging::updateTime()
+{
+    lastActive = micros64();
+}
+bool DW1000Ranging::isTimedOut()
+{
+    return (micros64()-lastActive >= DW1000_TIMEOUT / 1000); /* we only have microseconds accuracy */
 }

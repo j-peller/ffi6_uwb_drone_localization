@@ -7,3 +7,4 @@
 
 #define TIMEOUT 10000 //in ms
 #define AUTOMATIC_RECONNECT true
+#define RETRY_AFTER = 10000

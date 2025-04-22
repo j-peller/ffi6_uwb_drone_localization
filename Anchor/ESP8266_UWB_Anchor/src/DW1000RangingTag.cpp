@@ -1,7 +1,7 @@
 #include "DW1000Ranging.hpp"
 
 
-DW1000RangingTag::DW1000RangingTag(DeviceType deviceMode, DW1000& dw1000, uint16_t deviceAddress, uint16_t anchorAddress) : DW1000Ranging(deviceMode, dw1000)
+DW1000RangingTag::DW1000RangingTag(DW1000& dw1000, uint16_t deviceAddress, uint16_t anchorAddress) : DW1000Ranging(dw1000)
 {
     dw1000.setDeviceID(deviceAddress);
     this->anchor_address = anchorAddress;
@@ -21,6 +21,7 @@ void DW1000RangingTag::pollStateIRQHandler(uint32_t sys_status)
     {
         dw1000.get_rx_timestamp(ack_rx_ts);
         clear_mask |= (SYS_STATUS_LDEDONE);
+        dw1000.logger->addBuffer("RX TIMESTAMP");
         dw1000.removeCustomInterruptHandler();
         systemState = STATE_MEASURING_ACTIVE;
         currentCommState = FINAL;
@@ -31,7 +32,9 @@ void DW1000RangingTag::pollStateIRQHandler(uint32_t sys_status)
         dw1000.readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &data);
         data &= ~(clear_mask);
         dw1000.writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, data);
+        updateTime();
     }
+   
     
 
 }
@@ -52,7 +55,7 @@ void DW1000RangingTag::finalStateIRQHandler(uint32_t sys_status)
         dw1000.readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &data);
         data &= ~(clear_mask);
         dw1000.writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, data);
-    
+        updateTime();
     }
     
 }
@@ -70,11 +73,13 @@ void DW1000RangingTag::reportStateIRQHandler(uint32_t sys_status)
     dw1000.readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &data);
     data &= ~(clear_mask);
     dw1000.writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, data);
+    updateTime();
     }
 }
 void DW1000RangingTag::loop()
 {
     DW1000Ranging::loop();
+
     switch(currentCommState)
     {
         case POLL:
@@ -101,6 +106,7 @@ void DW1000RangingTag::loop()
                 dw1000.logger->output("TRYING TO SEND: %x", sizeof(twr_message_t));
                 dw1000.addCustomInterruptHandler(InterruptTable::INTERRUPT_ON_TX | InterruptTable::INTERRUPT_ON_LDE_DONE,
                     [this](uint32_t value) { this->pollStateIRQHandler(value); });
+                updateTime();
 
                 dw1000.transmit((uint8_t*)&init_msg, sizeof(twr_message_t));
             }
@@ -130,7 +136,7 @@ void DW1000RangingTag::loop()
                     .payload = { .final = {.type = twr_msg_type_t::TWR_MSG_TYPE_FINAL,}}
                 };
                 systemState = STATE_MEASURING_WAITING;
-
+                updateTime();
                 dw1000.addCustomInterruptHandler((InterruptTable) SYS_STATUS_TXFRS, [this](uint32_t value) { this->finalStateIRQHandler(value); });
                 dw1000.transmit((uint8_t*)&final_msg, sizeof(twr_message_t));
             }
@@ -154,10 +160,13 @@ void DW1000RangingTag::loop()
                 esp_init_rx_ts.set_timestamp(rprt_return->payload.report.pollRx);
                 esp_resp_tx_ts.set_timestamp(rprt_return->payload.report.responseTx);
                 esp_fin_rx_ts.set_timestamp(rprt_return->payload.report.finalRx);
-
-                //TODO, what the fuck do we want to do next, for now we wil just step back to the beginning!
+                updateTime();
+                
                 currentCommState = POLL;
                 systemState = STATE_IDLE;
+
+                rangingResult->distance = 0xAFFE;
+                rangingResult->state = RangingState::DONE;
             }
             break;
         }
@@ -165,10 +174,35 @@ void DW1000RangingTag::loop()
             break;
     }
 
+    if(isTimedOut() && systemState != STATE_IDLE)
+    {
+        /* Something is wrong! */
+        dw1000.logger->output("A timeout occured in the tag!"); /* TODO add more debug information about the timeout */
+        systemState = STATE_IDLE;
+        currentCommState = POLL;
+        resetTimestamps();
+        if(this->rangingResult != nullptr)
+        {
+            this->rangingResult->state = RangingState::TIMEOUT;
+        }
+        
+        /* TODO maybe add a complete reset function that also works when requesting a new distance_to_anchor()*/
+
+    }
+
 }
 
-void DW1000RangingTag::getDistanceToAnchor(uint16_t anchor_address)
+void DW1000RangingTag::getDistanceToAnchor(uint16_t anchor_address, RangingResult* rangingResult)
 {
+    if(this->rangingResult != nullptr)
+    {
+        this->rangingResult->distance = 0x0;
+        this->rangingResult->state = RangingState::ERROR;
+    }
+    this->rangingResult = rangingResult;
+    this->rangingResult->state = RangingState::MEASURING;
+    /* TODO to get the value back, add a result length pointer and a result struct: DONE, NOTDONE, TIMEOUT, ERROR*/
+    /* TODO how to we get a value back? We could check if it is in a new final state?*/
     if(systemState == STATE_IDLE)
     {
         /* We can start a new measurement! */
@@ -192,6 +226,7 @@ void DW1000RangingTag::getDistanceToAnchor(uint16_t anchor_address)
     this->anchor_address = anchor_address;
     systemState = STATE_MEASURING_ACTIVE;
     currentCommState = POLL;
+    updateTime();
 }
 
 void DW1000RangingTag::resetTimestamps()

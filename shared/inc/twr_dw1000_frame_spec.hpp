@@ -43,7 +43,7 @@ typedef struct {
 typedef struct {
     uint8_t type;
     uint8_t anchorShortAddr[2];     /* Anchor short address */
-    uint8_t responseDelay[2];       /* Response delay */
+    // uint8_t responseDelay[2];       /* Response delay: we dont use this at the moment */
 } twr_init_message_t;
 
 

@@ -32,7 +32,6 @@ typedef struct {
     uint8_t panID[2];       /* PAN ID */
     uint8_t destAddr[2];    /* Destination address */
     uint8_t srcAddr[2];     /* Source address */
-    /* we have variable length for our payload */
 } twr_frame_header_t;
 
 
@@ -44,7 +43,7 @@ typedef struct {
 typedef struct {
     uint8_t type;
     uint8_t anchorShortAddr[2];     /* Anchor short address */
-    uint8_t responseDelay[2];       /* Response delay */
+    // uint8_t responseDelay[2];       /* Response delay: we dont use this at the moment */
 } twr_init_message_t;
 
 
@@ -75,7 +74,7 @@ typedef struct {
     uint8_t type;           /* Frame type */
     uint8_t pollRx[5];      /* Receive timestamp of initial polling message */
     uint8_t responseTx[5];  /* Response timestamp of first response */
-    uint8_t finalTx[5];     /* Final timestamp of this report message to the drone */
+    uint8_t finalRx[5];     /* Final timestamp of this report message to the drone */
 } twr_report_message_t;
 
 

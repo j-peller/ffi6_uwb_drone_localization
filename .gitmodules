@@ -1,3 +1,9 @@
 [submodule "Drone/dwm1000_control/extern/uwb-dw1000"]
 	path = Drone/dwm1000_control/extern/uwb-dw1000
 	url = https://github.com/Decawave/uwb-dw1000.git
+[submodule "Anchor/dwm1000_control/extern/uwb-dw1000"]
+	path = Anchor/dwm1000_control/extern/uwb-dw1000
+	url = https://github.com/Decawave/uwb-dw1000.git
+[submodule "Anchor/ESP8266_UWB_Anchor/extern/uwb-dw1000"]
+	path = Anchor/ESP8266_UWB_Anchor/extern/uwb-dw1000
+	url = https://github.com/Decawave/uwb-dw1000.git

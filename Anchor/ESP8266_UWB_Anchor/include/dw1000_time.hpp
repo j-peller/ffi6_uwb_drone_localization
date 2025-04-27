@@ -36,6 +36,8 @@ public:
     bool operator==(const DW1000Time& copy) const;
     bool operator!=(const DW1000Time& copy) const;
 
+
+
 private:
     uint64_t _timeStamp;  /* 40-bit time stamp */
 

@@ -74,7 +74,7 @@ typedef struct {
     uint8_t type;           /* Frame type */
     uint8_t pollRx[5];      /* Receive timestamp of initial polling message */
     uint8_t responseTx[5];  /* Response timestamp of first response */
-    uint8_t finalTx[5];     /* Final timestamp of this report message to the drone */
+    uint8_t finalRx[5];     /* Final timestamp of this report message to the drone */
 } twr_report_message_t;
 
 

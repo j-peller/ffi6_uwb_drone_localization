@@ -18,6 +18,9 @@
 #define XTI_CLOCK   0x01    //< 19.2 MHz Clock
 #define PLL_CLOCK   0x02    //< 125 MHz Clock
 
+#define SYS_STATUS_ALL_TX_GOOD      (SYS_STATUS_TXFRB | SYS_STATUS_TXPRS | \
+    SYS_STATUS_TXPHS | SYS_STATUS_TXFRS)
+
 
 /**
  * @brief DWM1000 device instance structure
@@ -138,13 +141,13 @@ public:
     void get_rx_timestamp(DW1000Time& time);
 
     /* Poll Status Bit */
-    dwm_com_error_t poll_status_bit(uint32_t status_bit, uint64_t timeout);
+    dwm_com_error_t poll_status_bit(uint32_t status_mask, uint64_t timeout);
 
     /**
      * @brief All TX events
      */
     inline dwm_com_error_t poll_tx_status() {
-        return poll_status_bit(SYS_STATUS_ALL_TX, DW1000_TIMEOUT);
+        return poll_status_bit(SYS_STATUS_ALL_TX_GOOD, DW1000_TIMEOUT);
     }
 
     /**

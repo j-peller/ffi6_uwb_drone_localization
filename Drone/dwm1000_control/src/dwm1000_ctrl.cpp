@@ -300,10 +300,10 @@ dwm_com_error_t DWMController::set_mode(Mode mode)
     uint32_t sys_cfg = 0;
     readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
 
-    sys_cfg |= SYS_CFG_FFE;         //< Enable Frame Filtering. This requires SHORT_ADDR to be set beforehand.
-    sys_cfg |= SYS_CFG_FFAD;        //< Allow Data Frame
-    //sys_cfg &= ~SYS_CFG_FFE;
-    //sys_cfg &= ~SYS_CFG_FFAD;
+    //sys_cfg |= SYS_CFG_FFE;         //< Enable Frame Filtering. This requires SHORT_ADDR to be set beforehand.
+    //sys_cfg |= SYS_CFG_FFAD;        //< Allow Data Frame
+    sys_cfg &= ~SYS_CFG_FFE;
+    sys_cfg &= ~SYS_CFG_FFAD;
     sys_cfg |= SYS_CFG_PHR_MODE_00; //< Standard Frame mode IEEE 802.15.4 compliant
     sys_cfg |= mode.bitrate.rxm110k;
 
@@ -514,13 +514,13 @@ dwm_com_error_t DWMController::start_receiving()
 dwm_com_error_t DWMController::read_received_data(uint16_t* len_out, uint8_t** data_out)
 {
     /* FCS Error */
-    if (_last_sys_status & SYS_STATUS_RXFCE) {
-        fprintf(stdout, "Error in FCS\n");
-        return ERROR;
-    }
+    //if (_last_sys_status & SYS_STATUS_RXFCE) {
+    //    fprintf(stdout, "Error in FCS\n");
+    //    return ERROR;
+    //}
 
     /* get length of received data from Frame Info register */
-    uint8_t len = getReceivedDataLength();
+    uint16_t len = getReceivedDataLength();
     if (len <= 0) {
         fprintf(stdout, "Invalid length: %d\n", len);
         return ERROR;
@@ -569,7 +569,7 @@ void DWMController::get_rx_timestamp(DW1000Time& time)
  * 
  * TODO: may not continously poll for status bits via SPI. Consider using interrupts via GPIO pins
  */
-dwm_com_error_t DWMController::poll_status_bit(uint32_t status_bit, uint64_t timeout)
+dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t timeout)
 {
     uint32_t sys_status = 0;
 
@@ -582,7 +582,7 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_bit, uint64_t tim
         /* we are only interested in the first 32bits... */
         readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &sys_status);
         
-        if (sys_status & status_bit) {
+        if ((sys_status & status_mask) == status_mask) {
             _last_sys_status = sys_status;
             break;
         }
@@ -590,13 +590,14 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_bit, uint64_t tim
         /* prevent hammering the SPI */
         busywait_nanoseconds(10000);
 
-
         clock_gettime(CLOCK_MONOTONIC_RAW, &now);
         if (timespec_delta_nanoseconds(&now, &start) > timeout) {
             return TIMEOUT;
         }
         
     }
+
+    clearStatusEvent(status_mask);
 
     return SUCCESS;
 }
@@ -768,7 +769,7 @@ dwm_com_error_t DWMController::test_receiving_timestamp(DW1000Time& rx_time)
         msg->header.destAddr[0], msg->header.destAddr[1],
         msg->header.srcAddr[0], msg->header.srcAddr[1],
         msg->payload.report.type,
-        msg->payload.report.finalTx[0], msg->payload.report.finalTx[1], msg->payload.report.finalTx[2], msg->payload.report.finalTx[3], msg->payload.report.finalTx[4]
+        msg->payload.report.finalRx[0], msg->payload.report.finalRx[1], msg->payload.report.finalRx[2], msg->payload.report.finalRx[3], msg->payload.report.finalRx[4]
     );
 
     /* */

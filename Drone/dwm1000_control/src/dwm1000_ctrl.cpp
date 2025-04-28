@@ -392,8 +392,11 @@ dwm_com_error_t DWMController::set_mode(Mode mode)
     lde_cfg1 |= 0x0D;                   //< Set 0x0D as described in Section 2.5.5.4 for better performance
     writeBytes(LDE_IF_ID, LDE_CFG1_OFFSET, (uint8_t*)&lde_cfg1, sizeof(uint8_t));
 
-    uint16_t lde_cfg2 = 0x0607;     //< See DW1000 User Manual Page 177 Table 50
+    uint16_t lde_cfg2 = 0x1607;     //< See DW1000 User Manual Page 177 Table 50
     writeBytes(LDE_IF_ID, LDE_CFG2_OFFSET, (uint8_t*)&lde_cfg2, sizeof(uint16_t));
+
+    uint16_t lde_repc = LDE_REPC_PCODE_4 >> 3; //< See Page 178 
+    writeBytes(LDE_IF_ID, LDE_REPC_OFFSET, (uint8_t*)&lde_repc, sizeof(uint16_t));
 
     uint32_t tx_power_val = 0x0E082848; //< See DW1000 User Manual Section 2.5.5.6 
     writeBytes(TX_POWER_ID, NO_SUB_ADDRESS, (uint8_t*)&tx_power_val, sizeof(uint32_t));
@@ -572,6 +575,7 @@ void DWMController::get_rx_timestamp(DW1000Time& time)
 dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t timeout)
 {
     uint32_t sys_status = 0;
+    dwm_com_error_t ret = SUCCESS;
 
     timespec start, now;
 
@@ -592,14 +596,15 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t ti
 
         clock_gettime(CLOCK_MONOTONIC_RAW, &now);
         if (timespec_delta_nanoseconds(&now, &start) > timeout) {
-            return TIMEOUT;
+            ret = TIMEOUT;
+            return ret;
         }
         
     }
 
     clearStatusEvent(status_mask);
 
-    return SUCCESS;
+    return ret;
 }
 
 
@@ -647,6 +652,9 @@ void DWMController::reset()
     /* Finish reset */
     reg = PMSC_CTRL0_RESET_CLEAR; 
     writeBytes(PMSC_ID, PMSC_CTRL0_SOFTRESET_OFFSET, &reg, sizeof(uint8_t));
+
+    /* set into idle */
+    forceIdle();
  }
 
 

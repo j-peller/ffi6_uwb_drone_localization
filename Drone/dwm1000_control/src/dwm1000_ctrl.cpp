@@ -96,7 +96,7 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
         return NULL;
     }
 
-    if (gpiod_line_request_input(instance->_irq_line, "DWM1000Interrupt", 0) < 0) {
+    if (gpiod_line_request_rising_edge_events(instance->_irq_line, "DWM1000Interrupt", 0) < 0) {
         perror("Failed to set IRQ GPIO Pin to INPUT");
         gpiod_chip_close(instance->_gpio_chip);
         delete instance;
@@ -593,6 +593,9 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t ti
 {
     uint32_t sys_status = 0;
     dwm_com_error_t ret = SUCCESS;
+
+    /* wait for rising edege from DWM1000 */
+    gpiod_line_event_wait(_irq_line, NULL);
 
     timespec start, now;
 

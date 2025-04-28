@@ -79,8 +79,25 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
         return NULL;
     }
 
+    instance->_irq_line = gpiod_chip_get_line(instance->_gpio_chip, device->irq_gpio_pin);
+    if (!instance->_irq_line) {
+        perror("Failed to open GPIO Pin");
+        gpiod_chip_close(instance->_gpio_chip);
+        delete instance;
+        close(fd);
+        return NULL;
+    }
+
     if (gpiod_line_request_output(instance->_rst_line, "DWM1000Reset", 0) < 0) {
-        perror("Failed to set GPIO Pin to OUTPUT");
+        perror("Failed to set RST GPIO Pin to OUTPUT");
+        gpiod_chip_close(instance->_gpio_chip);
+        delete instance;
+        close(fd);
+        return NULL;
+    }
+
+    if (gpiod_line_request_input(instance->_irq_line, "DWM1000Interrupt", 0) < 0) {
+        perror("Failed to set IRQ GPIO Pin to INPUT");
         gpiod_chip_close(instance->_gpio_chip);
         delete instance;
         close(fd);

@@ -215,6 +215,7 @@ private:
     /* GPIO Control for Reset */
     struct gpiod_chip*      _gpio_chip;
     struct gpiod_line*      _rst_line;
+    struct gpiod_line*      _irq_line;
 
 protected:
     /* SPI Transaction Header operation modes  */

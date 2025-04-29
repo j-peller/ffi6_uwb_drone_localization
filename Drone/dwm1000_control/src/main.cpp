@@ -65,6 +65,7 @@ int main() {
     controller->soft_reset();
     usleep(1000000);
     controller->set_mode(thotro110);
+    controller->setIRQMask(SYS_MASK_MRXDFR | SYS_MASK_MTXFRS);
     usleep(1000000);
 
 

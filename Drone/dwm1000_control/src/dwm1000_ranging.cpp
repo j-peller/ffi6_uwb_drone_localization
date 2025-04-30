@@ -39,8 +39,10 @@ double DWMRanging::timestamps2distance(
     fprintf(stdout, "init_tx_ts: %ld\nesp_init_rx_ts: %ld\nesp_resp_tx_ts: %ld\nack_rx_ts: %ld\nfin_tx_ts: %ld\nesp_fin_rx_rs: %ld\n", t_sp, t_rp, t_sa, t_ra, t_sf, t_rf);
     
     // calculate time of flight as dw1000 timer ticks
-    double time_of_flight = ((t_ra - t_sp) * (t_rf - t_sa) - (t_sa - t_rp) * (t_sf - t_ra)) \
-        / ((t_ra - t_sp) + (t_rf - t_sa) + (t_sa - t_rp) + (t_sf - t_ra)); 
+    double time_of_flight = (double)((t_ra - t_sp) * (t_rf - t_sa) - (t_sa - t_rp) * (t_sf - t_ra)) \
+        / (double)((t_ra - t_sp) + (t_rf - t_sa) + (t_sa - t_rp) + (t_sf - t_ra)); 
+
+    fprintf(stdout, "ToF: %lf\n", time_of_flight);
 
     // calculate and return distance from TOF
     return time_of_flight * DW1000Time::DISTANCE_PER_US_M;
@@ -171,6 +173,7 @@ dwm_com_error_t DWMRanging::do_response_ack_state(DW1000Time& ack_rx_ts)
 
     /* Note Timestamp of Reception */
     _controller->get_rx_timestamp(ack_rx_ts);
+    fprintf(stdout, "Got ack_rx_ts: %ld\n", ack_rx_ts.get_timestamp());
 
     /* cleanup */
     delete ack_return;

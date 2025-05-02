@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include <time.h>
+#include <stdlib.h>
 
 
 /**
@@ -27,6 +28,25 @@ static inline void busywait_nanoseconds(uint64_t ns) {
     do {
         clock_gettime(CLOCK_MONOTONIC_RAW, &now);
     } while (timespec_delta_nanoseconds(&now, &start) < ns);
+}
+
+
+/**
+ * Returns env var as int, or 0 if not set or not a number
+ */
+static inline int getenv_int(const char* var) {
+    const char* val = getenv(var);
+    if (val) {
+        return atoi(val);
+    }
+    return 0;
+}
+
+/**
+ *  Returns env var as const char*, or NULL if not set
+ */ 
+static inline const char* getenv_str(const char* var) {
+    return getenv(var); // returns NULL if not set
 }
 
 #endif

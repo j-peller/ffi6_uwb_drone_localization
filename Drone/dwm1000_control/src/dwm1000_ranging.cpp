@@ -1,5 +1,53 @@
 #include "../inc/dwm1000_ranging.hpp"
+#include "../../../shared/inc/helpers.hpp"
 #include "../inc/dw1000_time.hpp"
+#include <linux/spi/spidev.h>
+
+/**
+ * Default Constructor to be used by ROS2 Node in combination with Docker Environment Variables
+ */
+DWMRanging::DWMRanging() 
+    : _controller(NULL)
+{
+    /**
+     * In the Docker Compose file, the following environment variables must be set:
+     * - DWM1000_SPI_DEV: SPI device path (e.g., /dev/spidev0.0)
+     * - DWM1000_SPI_BAUDRATE: SPI baudrate (e.g., 2000000 for 2MHz)
+     * - DWM1000_GPIO_DEV: GPIO device path (e.g., /dev/gpiochip0)
+     * - DWM1000_IRQ_PIN: GPIO pin number for IRQ (e.g., 17)
+     * - DWM1000_RST_PIN: GPIO pin number for RST (e.g., 27)
+     */
+    dw1000_dev_instance_t device = {
+        .spi_dev            = getenv_str("DWM1000_SPI_DEV"),
+        .spi_baudrate       = getenv_int("DWM1000_SPI_BAUDRATE"),
+        .spi_bits_per_word  = 8,
+        .spi_mode           = SPI_MODE_0,
+        .gpiod_chip         = getenv_str("DWM1000_GPIO_DEV"),
+        .irq_gpio_pin       = getenv_int("DWM1000_IRQ_PIN"),
+        .rst_gpio_pin       = getenv_int("DWM1000_RST_PIN")
+    };
+
+    DWMController* controller = DWMController::create_instance(&device);
+    if (controller == NULL) {
+        fprintf(stderr, "Failed to create DWMController instance\n");
+        return;
+    }
+
+    _controller = controller;
+}
+
+
+/**
+ * 
+ */
+DWMRanging::DWMRanging(DWMController* controller) {
+    if (controller == NULL) {
+        fprintf(stderr, "Failed to create DWMController instance\n");
+        return;
+    }
+
+    _controller = controller;
+}
 
 
 /**
@@ -7,7 +55,10 @@
  */
 DWMRanging::~DWMRanging() 
 {
-    /* TODO */
+    if (_controller != NULL){
+        delete _controller;
+        _controller = NULL;
+    }
 }
 
 

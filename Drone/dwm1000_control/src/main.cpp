@@ -14,7 +14,7 @@ int main() {
         .spi_bits_per_word = 8,
         .spi_mode = SPI_MODE_0,
         .gpiod_chip = "/dev/gpiochip4",
-        .irq_gpio_pin = 17,
+        .irq_gpio_pin = 26,
         .rst_gpio_pin = 27
     };
     DWMController* controller = DWMController::create_instance(&device);
@@ -26,6 +26,7 @@ int main() {
     controller->soft_reset();
     usleep(1000000);
     controller->set_mode(THOTRO110);
+    controller->setIRQMask(SYS_MASK_MRXDFR | SYS_MASK_MTXFRS);
     usleep(1000000);
 
 

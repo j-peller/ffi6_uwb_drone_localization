@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <gpiod.h>
 
 
 DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
@@ -79,8 +80,25 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
         return NULL;
     }
 
+    instance->_irq_line = gpiod_chip_get_line(instance->_gpio_chip, device->irq_gpio_pin);
+    if (!instance->_irq_line) {
+        perror("Failed to open GPIO Pin");
+        gpiod_chip_close(instance->_gpio_chip);
+        delete instance;
+        close(fd);
+        return NULL;
+    }
+
     if (gpiod_line_request_output(instance->_rst_line, "DWM1000Reset", 0) < 0) {
-        perror("Failed to set GPIO Pin to OUTPUT");
+        perror("Failed to set RST GPIO Pin to OUTPUT");
+        gpiod_chip_close(instance->_gpio_chip);
+        delete instance;
+        close(fd);
+        return NULL;
+    }
+
+    if (gpiod_line_request_rising_edge_events(instance->_irq_line, "DWM1000Interrupt") < 0) {
+        perror("Failed to set IRQ GPIO Pin to INPUT");
         gpiod_chip_close(instance->_gpio_chip);
         delete instance;
         close(fd);
@@ -433,34 +451,66 @@ void DWMController::get_rx_timestamp(DW1000Time& time)
 dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t timeout)
 {
     uint32_t sys_status = 0;
+    struct gpiod_line_event event;
     dwm_com_error_t ret = SUCCESS;
-
     timespec start, now;
+    int gpio_ret;
 
     clock_gettime(CLOCK_MONOTONIC_RAW,  &start);
 
     while (true) {
 
-        /* we are only interested in the first 32bits... */
-        readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &sys_status);
-        
-        if ((sys_status & status_mask) == status_mask) {
-            _last_sys_status = sys_status;
-            break;
-        }
-
-        /* prevent hammering the SPI */
-        busywait_nanoseconds(10000);
-
         clock_gettime(CLOCK_MONOTONIC_RAW, &now);
-        if (timespec_delta_nanoseconds(&now, &start) > timeout) {
-            ret = TIMEOUT;
-            return ret;
-        }
-        
-    }
 
-    clearStatusEvent(status_mask);
+        /* */
+        uint64_t elapsed = timespec_delta_nanoseconds(&now, &start);
+        if (elapsed >= timeout)
+            return TIMEOUT;
+
+        /* timeout to poll for interrupt edge event */
+        timespec remaining_ts {
+            .tv_sec = (time_t)((timeout - elapsed) / 1000000000),
+            .tv_nsec = (long)((timeout - elapsed) % 1000000000)
+        };
+
+        /* wait for event on irq pin */
+        gpio_ret = gpiod_line_event_wait(_irq_line, &remaining_ts);
+        if (gpio_ret > 0) {
+
+            /* Read the event type */
+            if (gpiod_line_event_read(_irq_line, &event) < 0) {
+                fprintf(stdout, "GPIO Read failed\n");
+                return ERROR;
+            }
+
+            /* is it our desired rising edge event? */
+            if (event.event_type == GPIOD_LINE_EVENT_RISING_EDGE) {
+
+                /* we are only interested in the first 32bits... */
+                readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &sys_status);
+        
+                /* check status */
+                if ((sys_status & status_mask) == status_mask) {
+                    _last_sys_status = sys_status;
+                    fprintf(stdout, "Gotcha! %04X\n", status_mask);
+                    clearStatusEvent(status_mask);
+                    return SUCCESS;
+                }
+            }
+
+            /* Drain remaining events without status checks */
+            while(gpiod_line_event_read(_irq_line, &event) >= 0) {
+            }
+
+        }
+        else if (gpio_ret == 0) {
+            fprintf(stdout, "No Events Available, Timeout\n");
+        } 
+        else {
+            fprintf(stdout, "Some error? Ready: %d\n", gpio_ret);
+            return ERROR;
+        }
+    }
 
     return ret;
 }
@@ -850,6 +900,15 @@ void DWMController::clearStatusEvent(uint64_t event_mask)
     memcpy(sys_status, &event_mask, SYS_STATUS_LEN);
 
     writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, sys_status, SYS_STATUS_LEN);
+}
+
+
+/**
+ * 
+ */
+void DWMController::setIRQMask(uint32_t irq_mask)
+{
+    writeBytes(SYS_MASK_ID, NO_SUB_ADDRESS, irq_mask);
 }
 
 

@@ -148,14 +148,16 @@ public:
      * @brief All TX events
      */
     inline dwm_com_error_t poll_tx_status() {
-        return poll_status_bit(SYS_STATUS_ALL_TX_GOOD, DW1000_TIMEOUT);
+        //return poll_status_bit(SYS_STATUS_ALL_TX_GOOD, DW1000_TIMEOUT);
+        return poll_status_bit(SYS_STATUS_TXFRS, DW1000_TIMEOUT);
     }
 
     /**
      * @brief All RX events after a correct packet reception
      */
     inline dwm_com_error_t poll_rx_status() {
-        return poll_status_bit(SYS_STATUS_ALL_RX_GOOD, RX_TIMEOUT);
+        //return poll_status_bit(SYS_STATUS_ALL_RX_GOOD, RX_TIMEOUT);
+        return poll_status_bit(SYS_STATUS_RXDFR, RX_TIMEOUT);
     }
 
     /* Reset */
@@ -176,6 +178,7 @@ public:
     dwm_com_error_t test_receiving_timestamp(DW1000Time& rx_time);
     
     
+    void setIRQMask(uint32_t irq_mask);
 private:
     DWMController(int spi_fd, dw1000_dev_instance_t* device);
 
@@ -215,6 +218,7 @@ private:
     /* GPIO Control for Reset */
     struct gpiod_chip*      _gpio_chip;
     struct gpiod_line*      _rst_line;
+    struct gpiod_line*      _irq_line;
 
 protected:
     /* SPI Transaction Header operation modes  */

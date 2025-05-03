@@ -100,7 +100,15 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
     /**
      * DWM1000 IRQ Pin stays asserted!!
      */
-    if (gpiod_line_request_rising_edge_events(instance->_irq_line, "DWM1000Interrupt") < 0) {
+
+    struct gpiod_line_request_config config = {
+        .consumer = "DWM1000Interrupt",
+        .request_type = GPIOD_LINE_REQUEST_EVENT_RISING_EDGE,
+        .flags = GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_DOWN
+    };
+
+
+    if (gpiod_line_request(instance->_irq_line, &config, 0) < 0) {
         perror("Failed to set IRQ GPIO Pin to INPUT");
         gpiod_chip_close(instance->_gpio_chip);
         delete instance;
@@ -517,13 +525,18 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t ti
                     _last_sys_status = sys_status;
                     fprintf(stdout, "Gotcha! %04X\n", status_mask);
                     clearStatusEvent(status_mask);
-                    return SUCCESS;
                 }
+                
+                /* Drain remaining events without status checks */
+                if (gpiod_line_event_wait(_irq_line, &remaining_ts) > 0) {
+                    fprintf(stdout, "Draining remaining events\n");
+                    while(gpiod_line_event_read(_irq_line, &event) > 0) {
+                    }
+                }
+                    
+                return SUCCESS;
             }
 
-            /* Drain remaining events without status checks */
-            //while(gpiod_line_event_read(_irq_line, &event) >= 0) {
-            //}
 
         }
         else if (gpio_ret == 0) {

@@ -164,6 +164,9 @@ dwm_com_error_t DWMRanging::do_init_state(DW1000Time& init_tx_ts, uint16_t ancho
         }}
     };
 
+    /**/
+    _controller->set_receiver_auto_reenable(false);
+
     /* Write Packet payload to tx buffer */
     _controller->write_transmission_data((uint8_t*)&init_msg, sizeof(twr_message_t));
 
@@ -200,6 +203,7 @@ dwm_com_error_t DWMRanging::do_response_ack_state(DW1000Time& ack_rx_ts)
 
     /* Start reception of packets */
     _controller->start_receiving();
+    _controller->set_receiver_auto_reenable(true);
     
     // poll and check for error
     while (true)
@@ -255,6 +259,9 @@ dwm_com_error_t DWMRanging::do_final_state(DW1000Time& fin_tx_ts, uint16_t ancho
         .payload = { .final = {.type = twr_msg_type_t::TWR_MSG_TYPE_FINAL,}}
     };
 
+    /**/
+    _controller->set_receiver_auto_reenable(false);
+
     /* Write Packet payload to tx buffer */
     _controller->write_transmission_data((uint8_t*)&final_msg, sizeof(twr_message_t));
 
@@ -292,6 +299,7 @@ dwm_com_error_t DWMRanging::do_report_state(DW1000Time& esp_init_rx_ts, DW1000Ti
 
     /* Start reception of packets */
     _controller->start_receiving();
+    _controller->set_receiver_auto_reenable(true);
     
     // poll and check for error
     while (true)

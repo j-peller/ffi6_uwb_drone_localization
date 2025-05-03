@@ -41,6 +41,7 @@ dwm_com_error_t DWMRangingAnchor::do_init_state()
 
     /* Start reception of packets */
     _controller->start_receiving();
+    _controller->set_receiver_auto_reenable(true);
     
     // poll and check for error
     while (true)
@@ -93,6 +94,9 @@ dwm_com_error_t DWMRangingAnchor::do_response_ack_state(uint16_t anchor_addr)
         .payload = { .response = {.type = twr_msg_type_t::TWR_MSG_TYPE_RESPONSE,}}
     };
 
+    /* disable receiver auto reenable */
+    _controller->set_receiver_auto_reenable(false);
+
     /* Write Packet payload to tx buffer */
     _controller->write_transmission_data((uint8_t*)&resp_msg, sizeof(twr_message_t));
 
@@ -129,6 +133,7 @@ dwm_com_error_t DWMRangingAnchor::do_final_state()
 
     /* Start reception of packets */
     _controller->start_receiving();
+    _controller->set_receiver_auto_reenable(true);
     
     // poll and check for error
     while (true)
@@ -190,6 +195,9 @@ dwm_com_error_t DWMRangingAnchor::do_report_state(uint16_t anchor_addr)
     _resp_tx_ts.get_timestamp(report_msg.payload.report.responseTx);
     _final_rx_ts.get_timestamp(report_msg.payload.report.finalRx);
 
+    /* disable receiver auto reenable */
+    _controller->set_receiver_auto_reenable(false);
+
     /* Write Packet payload to tx buffer */
     _controller->write_transmission_data((uint8_t*)&report_msg, sizeof(twr_message_t));
 
@@ -215,7 +223,6 @@ dwm_com_error_t DWMRangingAnchor::run_state_machine()
         return ret;
     }
     fprintf(stdout, "Got Init\n");
-    busywait_nanoseconds(100000000);
 
     if ( (ret = do_response_ack_state(ANCHOR_1)) != SUCCESS) {
         fprintf(stdout, "Error in response state %d\n", ret);
@@ -228,7 +235,6 @@ dwm_com_error_t DWMRangingAnchor::run_state_machine()
         return ret;
     }
     fprintf(stdout, "Got Final\n");
-    busywait_nanoseconds(100000000);
 
     if ( (ret = do_report_state(ANCHOR_1)) != SUCCESS) {
         fprintf(stdout, "Error in report state %d\n", ret);

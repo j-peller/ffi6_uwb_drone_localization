@@ -128,7 +128,6 @@ public:
     ~DWMController();
 
     /* DW1000 Configuration */
-    dwm_com_error_t do_init_config();
     dwm_com_error_t set_mode(dw1000_mode_t mode);
 
     /* Transmission */
@@ -139,6 +138,7 @@ public:
     /* Receiving */
     dwm_com_error_t start_receiving();
     dwm_com_error_t read_received_data(uint16_t* len_out, uint8_t** data_out);
+    void set_receiver_auto_reenable(bool enable);
     void get_rx_timestamp(DW1000Time& time);
 
     /* Poll Status Bit */

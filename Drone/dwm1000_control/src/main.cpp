@@ -26,7 +26,7 @@ int main() {
     controller->soft_reset();
     usleep(1000000);
     controller->set_mode(THOTRO110);
-    controller->setIRQMask(SYS_MASK_MRXDFR | SYS_MASK_MTXFRS);
+    controller->setIRQMask(SYS_MASK_MRXDFR | SYS_MASK_MTXFRS | SYS_MASK_MRXPHD | SYS_MASK_MRXFCG);
     usleep(1000000);
 
 
@@ -52,7 +52,7 @@ int main() {
     //        },
     //        .payload = { .report = {
     //            .type = twr_msg_type_t::TWR_MSG_TYPE_REPORT,
-    //            .finalTx = {0x12, 0x34, 0x56, 0x78, 0x9A}}}
+    //            .finalRx = {0x12, 0x34, 0x56, 0x78, 0x9A}}}
     //};
 
     //uint64_t ts = 0;

@@ -97,6 +97,9 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
         return NULL;
     }
 
+    /**
+     * DWM1000 IRQ Pin stays asserted!!
+     */
     if (gpiod_line_request_rising_edge_events(instance->_irq_line, "DWM1000Interrupt") < 0) {
         perror("Failed to set IRQ GPIO Pin to INPUT");
         gpiod_chip_close(instance->_gpio_chip);
@@ -158,6 +161,8 @@ DWMController::~DWMController()
 {
     /* Close GPIO Chip */
     if (_gpio_chip) {
+        gpiod_line_release(_irq_line);
+        gpiod_line_release(_rst_line);
         gpiod_chip_close(_gpio_chip);
     }
 
@@ -368,12 +373,11 @@ void DWMController::get_tx_timestamp(DW1000Time& time)
  *        This method sets the RXENAB bit in the SYS_CTRL register,
  *        which commands the DW1000 to begin receiving.
  */
-dwm_com_error_t DWMController::start_receiving() 
+dwm_com_error_t DWMController::start_receiving()
 {
-    /* Idle mode required */
     forceIdle();
 
-    /* clear all rx status registers */
+    /* clear rx status registers */
     clearStatusEvent(SYS_STATUS_ALL_RX_GOOD | SYS_STATUS_ALL_RX_ERR);
 
     /* Start Receiver */
@@ -425,6 +429,25 @@ dwm_com_error_t DWMController::read_received_data(uint16_t* len_out, uint8_t** d
     /* return received data */
     return SUCCESS;
 }
+
+
+/**
+ * 
+ */
+void DWMController::set_receiver_auto_reenable(bool enable)
+{
+    uint32_t sys_cfg = 0;
+    readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, &sys_cfg);
+
+    if (enable) {
+        sys_cfg |= SYS_CFG_RXAUTR;
+    } else {
+        sys_cfg &= ~SYS_CFG_RXAUTR;
+    }
+
+    writeBytes(SYS_CFG_ID, NO_SUB_ADDRESS, sys_cfg);
+}
+
 
 
 /**
@@ -499,8 +522,8 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t ti
             }
 
             /* Drain remaining events without status checks */
-            while(gpiod_line_event_read(_irq_line, &event) >= 0) {
-            }
+            //while(gpiod_line_event_read(_irq_line, &event) >= 0) {
+            //}
 
         }
         else if (gpio_ret == 0) {

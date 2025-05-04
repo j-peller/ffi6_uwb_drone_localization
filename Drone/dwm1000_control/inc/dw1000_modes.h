@@ -6,8 +6,8 @@
 #include "dwm1000_ctrl.hpp"
 
 typedef enum {
-    THOTRO110,
-    JOPEL110
+    THOTRO,
+    JOPEL
 } dw1000_mode_enum_t;
 
 // Deklaration der konstanten Konfiguration

@@ -38,10 +38,10 @@ DWMRanging* DWMRanging::create_instance(DWMController* controller)
     /* Set Controller Mode */
     switch (getenv_int("DWM1000_MODE"))
     {
-    case dw1000_mode_enum_t::JOPEL110:
+    case dw1000_mode_enum_t::JOPEL:
         controller->set_mode(JOPEL110);
         break;
-    case dw1000_mode_enum_t::THOTRO110:
+    case dw1000_mode_enum_t::THOTRO:
         controller->set_mode(THOTRO110);
         break;
     }

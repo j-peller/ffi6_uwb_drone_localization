@@ -24,11 +24,11 @@ int main() {
     }
 
     /* Reset must be performed */
-    controller->soft_reset();
-    controller->set_mode(JOPEL110);
-    /* Interrupt Mask must match Status Mask */
-    controller->setIRQMask(SYS_MASK_MRXDFR | SYS_MASK_MTXFRS);
-    usleep(1000000);
+    //controller->soft_reset();
+    //controller->set_mode(JOPEL110);
+    ///* Interrupt Mask must match Status Mask */
+    //controller->setIRQMask(SYS_MASK_MRXDFR | SYS_MASK_MTXFRS);
+    //usleep(1000000);
 
 
     //DW1000Time rx_time;

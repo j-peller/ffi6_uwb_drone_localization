@@ -35,19 +35,23 @@ DWMRanging* DWMRanging::create_instance(DWMController* controller)
         }
     }
 
+    /* Perform a soft reset */
+    controller->soft_reset();
+
     /* Set Controller Mode */
     switch (getenv_int("DWM1000_MODE"))
     {
     case dw1000_mode_enum_t::JOPEL:
+        fprintf(stdout, "Setting mode to JOPEL110\n");
         controller->set_mode(JOPEL110);
         break;
     case dw1000_mode_enum_t::THOTRO:
+        fprintf(stdout, "Setting mode to THOTRO110\n");
         controller->set_mode(THOTRO110);
         break;
     }
 
-    /* Perform a soft reset */
-    controller->soft_reset();
+    controller->setIRQMask(SYS_MASK_MRXDFR | SYS_MASK_MTXFRS);
     busywait_nanoseconds(1000000);  //< Wait 1ms
     
     DWMRanging* instance = new DWMRanging(controller);
@@ -382,16 +386,16 @@ dwm_com_error_t DWMRanging::get_distance_to_anchor(uint16_t anchor_addr, double*
     DW1000Time esp_init_rx_ts, esp_resp_tx_ts, esp_fin_rx_ts;
 
     // go through state machine state by state and do the error handling accordingly
-    if (do_init_state(init_tx_ts, anchor_addr) == dwm_com_error_t::ERROR)
+    if (do_init_state(init_tx_ts, anchor_addr) != SUCCESS)
         return dwm_com_error_t::ERROR;
 
-    if (do_response_ack_state(ack_rx_ts) == dwm_com_error_t::ERROR)
+    if (do_response_ack_state(ack_rx_ts) != SUCCESS)
         return dwm_com_error_t::ERROR;
 
-    if (do_final_state(fin_tx_ts, anchor_addr) == dwm_com_error_t::ERROR)
+    if (do_final_state(fin_tx_ts, anchor_addr) != SUCCESS)
         return dwm_com_error_t::ERROR;
     
-    if (do_report_state(esp_init_rx_ts, esp_resp_tx_ts, esp_fin_rx_ts) == dwm_com_error_t::ERROR)
+    if (do_report_state(esp_init_rx_ts, esp_resp_tx_ts, esp_fin_rx_ts) != SUCCESS)
         return dwm_com_error_t::ERROR;
 
     // return distance procedurally

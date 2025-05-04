@@ -361,8 +361,8 @@ void DWMController::start_transmission() {
     clearStatusEvent(SYS_STATUS_ALL_TX);
 
     /* WAIT4RESP maybe an option here to enable the receiver immediatly after transmission completed */
-    /* Start Receiver */
-    writeBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, SYS_CTRL_TXSTRT);
+    /* Start Transmitter */
+    writeBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, SYS_CTRL_TXSTRT | SYS_CTRL_WAIT4RESP);
 }
 
 
@@ -418,7 +418,7 @@ dwm_com_error_t DWMController::read_received_data(uint16_t* len_out, uint8_t** d
     /* get length of received data from Frame Info register */
     uint16_t len = getReceivedDataLength();
     if (len <= 0) {
-        fprintf(stdout, "Invalid length: %d\n", len);
+        fprintf(stderr, "Invalid length: %d\n", len);
         return ERROR;
     }
     fprintf(stdout, "Received data with length: %d\n", len);
@@ -492,6 +492,12 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t ti
     timespec start, now;
     int gpio_ret;
 
+    /**
+     * Mask only desired interrupts.
+     * Sys Status Register is cleared by receiver / transmitter enable
+     */
+    //setIRQMask(status_mask);
+
     clock_gettime(CLOCK_MONOTONIC_RAW,  &start);
 
     while (true) {
@@ -515,7 +521,7 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t ti
 
             /* Read the event type */
             if (gpiod_line_event_read(_irq_line, &event) < 0) {
-                fprintf(stdout, "GPIO Read failed\n");
+                fprintf(stderr, "GPIO Read failed\n");
                 return ERROR;
             }
 
@@ -534,7 +540,7 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t ti
                 
                 /* Drain remaining events without status checks */
                 if (gpiod_line_event_wait(_irq_line, &remaining_ts) > 0) {
-                    fprintf(stdout, "Draining remaining events\n");
+                    //fprintf(stdout, "Draining remaining events\n");
                     while(gpiod_line_event_read(_irq_line, &event) > 0) {
                     }
                 }
@@ -545,10 +551,10 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t ti
 
         }
         else if (gpio_ret == 0) {
-            fprintf(stdout, "No Events Available, Timeout\n");
+            fprintf(stderr, "No Events Available, Timeout\n");
         } 
         else {
-            fprintf(stdout, "Some error? Ready: %d\n", gpio_ret);
+            fprintf(stderr, "Some error? Ready: %d\n", gpio_ret);
             return ERROR;
         }
     }

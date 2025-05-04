@@ -150,6 +150,26 @@ DW1000Time& DW1000Time::operator+=(const DW1000Time& copy)
 }
 
 
+/**
+ * 
+ */
+DW1000Time& DW1000Time::operator*=(const DW1000Time& copy)
+{
+    this->_timeStamp = (this->_timeStamp * copy.get_timestamp()) & TIMER_MAX;
+    return *this;
+}
+
+
+/**
+ * 
+ */
+DW1000Time& DW1000Time::operator/=(const DW1000Time& copy)
+{
+    this->_timeStamp = (this->_timeStamp / copy.get_timestamp()) & TIMER_MAX;
+    return *this;
+}
+
+
 
 /**
  * @brief Subtraction operator for DW1000Time
@@ -169,6 +189,28 @@ DW1000Time DW1000Time::operator+(const DW1000Time& copy) const
 {
     /* we are initializing a new DW1000 Object - constructor handles overflow correction */
     DW1000Time result(_timeStamp + copy.get_timestamp());
+    return result;
+}
+
+
+/**
+ * 
+ */
+DW1000Time DW1000Time::operator*(const DW1000Time& copy) const
+{
+    /* we are initializing a new DW1000 Object - constructor handles overflow correction */
+    DW1000Time result(_timeStamp * copy.get_timestamp());
+    return result;
+}
+
+
+/**
+ * 
+ */
+DW1000Time DW1000Time::operator/(const DW1000Time& copy) const
+{
+    /* we are initializing a new DW1000 Object - constructor handles overflow correction */
+    DW1000Time result(_timeStamp / copy.get_timestamp());
     return result;
 }
 

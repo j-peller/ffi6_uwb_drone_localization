@@ -25,7 +25,7 @@ int main() {
 
     /* Reset must be performed */
     controller->soft_reset();
-    controller->set_mode(THOTRO110);
+    controller->set_mode(JOPEL110);
     /* Interrupt Mask must match Status Mask */
     controller->setIRQMask(SYS_MASK_MRXDFR | SYS_MASK_MTXFRS);
     usleep(1000000);
@@ -73,19 +73,13 @@ int main() {
      * Uncomment respective for testing
      */
 
-    DWMRanging tag = DWMRanging(controller);
+    DWMRanging* tag = DWMRanging::create_instance(controller);
     double distance = 0.0;
-    tag.get_distance_to_anchor(ANCHOR_1, &distance);
+    tag->get_distance_to_anchor(ANCHOR_1, &distance);
     fprintf(stdout, "Got distance: %lfm\n", distance);
 
 
-    //DWMRangingAnchor anchor = DWMRangingAnchor(controller);
-    //while(1) {
-    //    if (anchor.run_state_machine() == SUCCESS)
-    //        break; 
-    //}
-    //fprintf(stdout, "Anchor finished\n");
-
+    delete tag;
 
     return EXIT_SUCCESS;
 }

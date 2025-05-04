@@ -17,16 +17,17 @@
  */
 class DWMRanging {
 public:
-    DWMRanging();
-    DWMRanging(DWMController* controller);
+    static DWMRanging* create_instance(DWMController* controller);
     ~DWMRanging();
 
     /* Ranging */
     dwm_com_error_t get_distances_to_anchors(distances* distances);
     dwm_com_error_t get_distance_to_anchor(uint16_t anchor_addr, double* distance);
-    
 
 private:
+    DWMRanging();
+    DWMRanging(DWMController* controller);
+
     dwm_com_error_t do_init_state(DW1000Time& init_tx_ts, uint16_t anchor_addr);
     dwm_com_error_t do_response_ack_state(DW1000Time& ack_rx_ts);
     dwm_com_error_t do_final_state(DW1000Time& fin_tx_ts, uint16_t anchor_addr);

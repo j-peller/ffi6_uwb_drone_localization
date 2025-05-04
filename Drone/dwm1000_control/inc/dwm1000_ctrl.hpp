@@ -18,8 +18,7 @@
 #define XTI_CLOCK   0x01    //< 19.2 MHz Clock
 #define PLL_CLOCK   0x02    //< 125 MHz Clock
 
-#define SYS_STATUS_ALL_TX_GOOD      (SYS_STATUS_TXFRB | SYS_STATUS_TXPRS | \
-    SYS_STATUS_TXPHS | SYS_STATUS_TXFRS)
+#define SYS_STATUS_ALL_TX_GOOD      (SYS_STATUS_TXFRB | SYS_STATUS_TXPRS | SYS_STATUS_TXPHS | SYS_STATUS_TXFRS)
 
 
 /**
@@ -105,6 +104,10 @@ enum SFD {
     DecaWave,
 };
 
+
+/**
+ * 
+ */
 typedef struct {
     uint8_t channel_num;
     dw1000_channel_t        channel_config;

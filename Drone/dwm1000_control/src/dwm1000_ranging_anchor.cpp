@@ -51,7 +51,7 @@ dwm_com_error_t DWMRangingAnchor::do_init_state()
         if (ret != SUCCESS)
         {
             // for testing only...
-            //waitOutError();
+            waitOutError();
         } else {
             ret = _controller->read_received_data(&ack_len, (uint8_t**)&ack_return);
             if (ret != SUCCESS) {
@@ -132,7 +132,7 @@ dwm_com_error_t DWMRangingAnchor::do_final_state()
     dwm_com_error_t ret = SUCCESS;  
 
     /* Start reception of packets */
-    _controller->start_receiving();
+    //_controller->start_receiving();
     _controller->set_receiver_auto_reenable(true);
     
     // poll and check for error
@@ -143,7 +143,7 @@ dwm_com_error_t DWMRangingAnchor::do_final_state()
         if (ret != SUCCESS)
         {
             // for testing only...
-            //waitOutError();
+            waitOutError();
         } else {
             ret = _controller->read_received_data(&ack_len, (uint8_t**)&fin_return);
             if (ret != SUCCESS) {

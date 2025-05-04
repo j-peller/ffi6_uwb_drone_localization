@@ -29,5 +29,5 @@ const dw1000_mode_t THOTRO110 = {
     },
     .preamble_code = 0x04,
     .preamble_length = TX_FCTRL_TXPSR_PE_2048,
-    .sfd = SFD::STD
+    .sfd = SFD::DecaWave
 };

@@ -251,7 +251,6 @@ dwm_com_error_t DWMController::set_mode(dw1000_mode_t mode)
 
     *(uint32_t *) chan_ctrl &= ~CHAN_CTRL_RX_PCOD_MASK;           //< Clear current Preamble Code for Receiver
     *(uint32_t *) chan_ctrl |= (mode.preamble_code) << CHAN_CTRL_RX_PCOD_SHIFT;  //< Set Preamble Code 9. Supported according to page 214 table 61
-    writeBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, chan_ctrl, CHAN_CTRL_LEN);
 
     switch(mode.sfd){
         case SFD::STD:
@@ -261,9 +260,15 @@ dwm_com_error_t DWMController::set_mode(dw1000_mode_t mode)
         }
         case SFD::DecaWave:
         {
+            *(uint32_t *) chan_ctrl |= CHAN_CTRL_DWSFD;
+            *(uint32_t *) chan_ctrl &= ~(CHAN_CTRL_TNSSFD | CHAN_CTRL_RNSSFD);
+
+            // When using 110k mode, the SFD length is always 64Bytes 
             break;
         }
     }
+    
+    writeBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, chan_ctrl, CHAN_CTRL_LEN);
 
     /**
      * Default configurations that should be modified according to Section 2.5.5 page 17 

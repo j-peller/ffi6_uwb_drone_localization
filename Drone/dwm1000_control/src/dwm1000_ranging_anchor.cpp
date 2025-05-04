@@ -51,7 +51,7 @@ dwm_com_error_t DWMRangingAnchor::do_init_state()
         if (ret != SUCCESS)
         {
             // for testing only...
-            waitOutError();
+            //waitOutError();
         } else {
             ret = _controller->read_received_data(&ack_len, (uint8_t**)&ack_return);
             if (ret != SUCCESS) {

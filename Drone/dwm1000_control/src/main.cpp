@@ -23,10 +23,11 @@ int main() {
         return EXIT_FAILURE;
     }
 
+    /* Reset must be performed */
     controller->soft_reset();
-    usleep(1000000);
     controller->set_mode(THOTRO110);
-    controller->setIRQMask(SYS_MASK_MRXDFR | SYS_MASK_MTXFRS | SYS_MASK_MRXPHD | SYS_MASK_MRXFCG);
+    /* Interrupt Mask must match Status Mask */
+    controller->setIRQMask(SYS_MASK_MRXDFR | SYS_MASK_MTXFRS);
     usleep(1000000);
 
 

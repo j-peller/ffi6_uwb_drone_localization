@@ -87,7 +87,13 @@ double DWMRanging::timestamps2distance(
     uint64_t t_sf = fin_tx_ts.get_timestamp();
     uint64_t t_rf = esp_fin_rx_ts.get_timestamp();
 
-    fprintf(stdout, "init_tx_ts: %ld\nesp_init_rx_ts: %ld\nesp_resp_tx_ts: %ld\nack_rx_ts: %ld\nfin_tx_ts: %ld\nesp_fin_rx_rs: %ld\n", t_sp, t_rp, t_sa, t_ra, t_sf, t_rf);
+    fprintf(stdout, "t_sp: %ld\nt_rp: %ld\nt_sa: %ld\nt_ra: %ld\nt_sf: %ld\nt_rf: %ld\n", t_sp, t_rp, t_sa, t_ra, t_sf, t_rf);
+
+    fprintf(stdout, "t_ra - t_sp: %ld\n", t_ra - t_sp);
+    fprintf(stdout, "t_rf - t_sa: %ld\n", t_rf - t_sa);
+    fprintf(stdout, "t_sa - t_rp: %ld\n", t_sa - t_rp);
+    fprintf(stdout, "t_sf - t_ra: %ld\n", t_sf - t_ra);
+
     
     // calculate time of flight as dw1000 timer ticks
     double time_of_flight = (double)((t_ra - t_sp) * (t_rf - t_sa) - (t_sa - t_rp) * (t_sf - t_ra)) \
@@ -212,7 +218,7 @@ dwm_com_error_t DWMRanging::do_response_ack_state(DW1000Time& ack_rx_ts)
         ret = _controller->poll_rx_status();
         if (ret != SUCCESS)
         {
-            waitOutError();
+            //waitOutError();
         } else {
             ret = _controller->read_received_data(&ack_len, (uint8_t**)&ack_return);
             if (ret != SUCCESS) {
@@ -271,7 +277,7 @@ dwm_com_error_t DWMRanging::do_final_state(DW1000Time& fin_tx_ts, uint16_t ancho
     /* Poll for completion of transmission */
     ret = _controller->poll_tx_status();
     if (ret != SUCCESS) {
-        waitOutError();
+        //waitOutError();
         return ret;
     }
 
@@ -308,7 +314,7 @@ dwm_com_error_t DWMRanging::do_report_state(DW1000Time& esp_init_rx_ts, DW1000Ti
         ret = _controller->poll_rx_status();
         if (ret != SUCCESS)
         {
-            waitOutError();
+            //waitOutError();
         } else {
             ret = _controller->read_received_data(&ack_len, (uint8_t**)&rprt_return);
             if (ret != SUCCESS) {

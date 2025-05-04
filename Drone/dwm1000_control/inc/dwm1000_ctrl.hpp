@@ -18,8 +18,7 @@
 #define XTI_CLOCK   0x01    //< 19.2 MHz Clock
 #define PLL_CLOCK   0x02    //< 125 MHz Clock
 
-#define SYS_STATUS_ALL_TX_GOOD      (SYS_STATUS_TXFRB | SYS_STATUS_TXPRS | \
-    SYS_STATUS_TXPHS | SYS_STATUS_TXFRS)
+#define SYS_STATUS_ALL_TX_GOOD      (SYS_STATUS_TXFRB | SYS_STATUS_TXPRS | SYS_STATUS_TXPHS | SYS_STATUS_TXFRS)
 
 
 /**
@@ -105,6 +104,10 @@ enum SFD {
     DecaWave,
 };
 
+
+/**
+ * 
+ */
 typedef struct {
     uint8_t channel_num;
     dw1000_channel_t        channel_config;
@@ -128,7 +131,6 @@ public:
     ~DWMController();
 
     /* DW1000 Configuration */
-    dwm_com_error_t do_init_config();
     dwm_com_error_t set_mode(dw1000_mode_t mode);
 
     /* Transmission */
@@ -139,6 +141,7 @@ public:
     /* Receiving */
     dwm_com_error_t start_receiving();
     dwm_com_error_t read_received_data(uint16_t* len_out, uint8_t** data_out);
+    void set_receiver_auto_reenable(bool enable);
     void get_rx_timestamp(DW1000Time& time);
 
     /* Poll Status Bit */
@@ -148,14 +151,16 @@ public:
      * @brief All TX events
      */
     inline dwm_com_error_t poll_tx_status() {
-        return poll_status_bit(SYS_STATUS_ALL_TX_GOOD, DW1000_TIMEOUT);
+        //return poll_status_bit(SYS_STATUS_ALL_TX_GOOD, DW1000_TIMEOUT);
+        return poll_status_bit(SYS_STATUS_TXFRS, DW1000_TIMEOUT);
     }
 
     /**
      * @brief All RX events after a correct packet reception
      */
     inline dwm_com_error_t poll_rx_status() {
-        return poll_status_bit(SYS_STATUS_ALL_RX_GOOD, RX_TIMEOUT);
+        //return poll_status_bit(SYS_STATUS_ALL_RX_GOOD, RX_TIMEOUT);
+        return poll_status_bit(SYS_STATUS_RXDFR, RX_TIMEOUT);
     }
 
     /* Reset */
@@ -176,6 +181,7 @@ public:
     dwm_com_error_t test_receiving_timestamp(DW1000Time& rx_time);
     
     
+    void setIRQMask(uint32_t irq_mask);
 private:
     DWMController(int spi_fd, dw1000_dev_instance_t* device);
 
@@ -215,6 +221,7 @@ private:
     /* GPIO Control for Reset */
     struct gpiod_chip*      _gpio_chip;
     struct gpiod_line*      _rst_line;
+    struct gpiod_line*      _irq_line;
 
 protected:
     /* SPI Transaction Header operation modes  */

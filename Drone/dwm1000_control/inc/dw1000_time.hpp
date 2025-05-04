@@ -28,9 +28,13 @@ public:
     DW1000Time& operator=(const DW1000Time& copy);
     DW1000Time& operator-=(const DW1000Time& copy);
     DW1000Time& operator+=(const DW1000Time& copy);
+    DW1000Time& operator*=(const DW1000Time& copy);
+    DW1000Time& operator/=(const DW1000Time& copy);
 
     DW1000Time  operator-(const DW1000Time& copy) const;
     DW1000Time  operator+(const DW1000Time& copy) const;
+    DW1000Time  operator*(const DW1000Time& copy) const;
+    DW1000Time  operator/(const DW1000Time& copy) const;
 
     /* compare */
     bool operator==(const DW1000Time& copy) const;

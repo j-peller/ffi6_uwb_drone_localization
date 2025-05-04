@@ -1,7 +1,64 @@
 #include "../inc/dwm1000_ranging.hpp"
+#include "../inc/dw1000_modes.h"
 #include "../../../shared/inc/helpers.hpp"
 #include "../inc/dw1000_time.hpp"
 #include <linux/spi/spidev.h>
+
+/**
+ * 
+ */
+DWMRanging* DWMRanging::create_instance(DWMController* controller)
+{
+    if (controller == NULL) {
+        /**
+         * In the Docker Compose file, the following environment variables must be set:
+         * - DWM1000_SPI_DEV: SPI device path (e.g., /dev/spidev0.0)
+         * - DWM1000_GPIO_DEV: GPIO device path (e.g., /dev/gpiochip0)
+         * - DWM1000_IRQ_PIN: GPIO pin number for IRQ (e.g., 17)
+         * - DWM1000_RST_PIN: GPIO pin number for RST (e.g., 27)
+         * - DWM1000_MODE: Mode of the DW1000 (e.g., JOPEL110 or THOTRO110)
+         */
+        dw1000_dev_instance_t device = {
+            .spi_dev            = getenv_str("DWM1000_SPI_DEV"),
+            .spi_baudrate       = SLOW_SPI,
+            .spi_bits_per_word  = 8,
+            .spi_mode           = SPI_MODE_0,
+            .gpiod_chip         = getenv_str("DWM1000_GPIO_DEV"),
+            .irq_gpio_pin       = getenv_int("DWM1000_IRQ_PIN"),
+            .rst_gpio_pin       = getenv_int("DWM1000_RST_PIN")
+        };
+
+        DWMController* controller = DWMController::create_instance(&device);
+        if (controller == NULL) {
+            fprintf(stderr, "Failed to create DWMController instance\n");
+            return NULL;
+        }
+    }
+
+    /* Set Controller Mode */
+    switch (getenv_int("DWM1000_MODE"))
+    {
+    case dw1000_mode_enum_t::JOPEL110:
+        controller->set_mode(JOPEL110);
+        break;
+    case dw1000_mode_enum_t::THOTRO110:
+        controller->set_mode(THOTRO110);
+        break;
+    }
+
+    /* Perform a soft reset */
+    controller->soft_reset();
+    busywait_nanoseconds(1000000);  //< Wait 1ms
+    
+    DWMRanging* instance = new DWMRanging(controller);
+    if (instance == NULL) {
+        fprintf(stderr, "Failed to create DWMRanging instance\n");
+        return NULL;
+    }
+
+    return instance;
+}   
+
 
 /**
  * Default Constructor to be used by ROS2 Node in combination with Docker Environment Variables
@@ -9,41 +66,18 @@
 DWMRanging::DWMRanging() 
     : _controller(NULL)
 {
-    /**
-     * In the Docker Compose file, the following environment variables must be set:
-     * - DWM1000_SPI_DEV: SPI device path (e.g., /dev/spidev0.0)
-     * - DWM1000_SPI_BAUDRATE: SPI baudrate (e.g., 2000000 for 2MHz)
-     * - DWM1000_GPIO_DEV: GPIO device path (e.g., /dev/gpiochip0)
-     * - DWM1000_IRQ_PIN: GPIO pin number for IRQ (e.g., 17)
-     * - DWM1000_RST_PIN: GPIO pin number for RST (e.g., 27)
-     */
-    dw1000_dev_instance_t device = {
-        .spi_dev            = getenv_str("DWM1000_SPI_DEV"),
-        .spi_baudrate       = getenv_int("DWM1000_SPI_BAUDRATE"),
-        .spi_bits_per_word  = 8,
-        .spi_mode           = SPI_MODE_0,
-        .gpiod_chip         = getenv_str("DWM1000_GPIO_DEV"),
-        .irq_gpio_pin       = getenv_int("DWM1000_IRQ_PIN"),
-        .rst_gpio_pin       = getenv_int("DWM1000_RST_PIN")
-    };
-
-    DWMController* controller = DWMController::create_instance(&device);
-    if (controller == NULL) {
-        fprintf(stderr, "Failed to create DWMController instance\n");
-        return;
-    }
-
-    _controller = controller;
+    /* */
 }
 
 
 /**
  * 
  */
-DWMRanging::DWMRanging(DWMController* controller) {
+DWMRanging::DWMRanging(DWMController* controller) 
+{
     if (controller == NULL) {
-        fprintf(stderr, "Failed to create DWMController instance\n");
-        return;
+        fprintf(stderr, "Failed to create DWMRanging instance\n");
+        exit(EXIT_FAILURE);
     }
 
     _controller = controller;
@@ -79,24 +113,24 @@ double DWMRanging::timestamps2distance(
     DW1000Time& esp_init_rx_ts, DW1000Time& esp_resp_tx_ts,
     DW1000Time& esp_fin_rx_ts
 ) {
-    // convert timestampts to 64 bit ints containing raw number of ticks
-    uint64_t t_sp = init_tx_ts.get_timestamp();
-    uint64_t t_rp = esp_init_rx_ts.get_timestamp();
-    uint64_t t_sa = esp_resp_tx_ts.get_timestamp();
-    uint64_t t_ra = ack_rx_ts.get_timestamp();
-    uint64_t t_sf = fin_tx_ts.get_timestamp();
-    uint64_t t_rf = esp_fin_rx_ts.get_timestamp();
+    DW1000Time t_round1 = ack_rx_ts - init_tx_ts;
+    DW1000Time t_round2 = esp_fin_rx_ts - esp_resp_tx_ts;
+    DW1000Time t_reply1 = esp_resp_tx_ts - esp_init_rx_ts;
+    DW1000Time t_reply2 = fin_tx_ts - ack_rx_ts;
 
-    fprintf(stdout, "init_tx_ts: %ld\nesp_init_rx_ts: %ld\nesp_resp_tx_ts: %ld\nack_rx_ts: %ld\nfin_tx_ts: %ld\nesp_fin_rx_rs: %ld\n", t_sp, t_rp, t_sa, t_ra, t_sf, t_rf);
-    
-    // calculate time of flight as dw1000 timer ticks
-    double time_of_flight = (double)((t_ra - t_sp) * (t_rf - t_sa) - (t_sa - t_rp) * (t_sf - t_ra)) \
-        / (double)((t_ra - t_sp) + (t_rf - t_sa) + (t_sa - t_rp) + (t_sf - t_ra)); 
+    //fprintf(stdout, "r_round1: %ld\n", t_round1.get_timestamp());
+    //fprintf(stdout, "r_round2: %ld\n", t_round2.get_timestamp());
+    //fprintf(stdout, "r_reply1: %ld\n", t_reply1.get_timestamp());
+    //fprintf(stdout, "r_reply2: %ld\n", t_reply2.get_timestamp());
 
-    fprintf(stdout, "ToF: %lf\n", time_of_flight);
+    DW1000Time time_of_flight = ((t_round1 * t_round2) - (t_reply1 * t_reply2)) / (t_round1 + t_round2 + t_reply1 + t_reply2);
+
+    double distance = (double)time_of_flight.get_timestamp() * DW1000Time::DISTANCE_PER_US_M;
+
+    //fprintf(stdout, "ToF: %ld\n", time_of_flight.get_timestamp());
 
     // calculate and return distance from TOF
-    return time_of_flight * DW1000Time::DISTANCE_PER_US_M;
+    return distance;
 }
 
 /**
@@ -164,6 +198,9 @@ dwm_com_error_t DWMRanging::do_init_state(DW1000Time& init_tx_ts, uint16_t ancho
         }}
     };
 
+    /* */
+    _controller->set_receiver_auto_reenable(false);
+
     /* Write Packet payload to tx buffer */
     _controller->write_transmission_data((uint8_t*)&init_msg, sizeof(twr_message_t));
 
@@ -179,7 +216,7 @@ dwm_com_error_t DWMRanging::do_init_state(DW1000Time& init_tx_ts, uint16_t ancho
     
     /* Note time of transmission */
     _controller->get_tx_timestamp(init_tx_ts);
-    fprintf(stdout, "Got init_tx_ts: %ld\n", init_tx_ts.get_timestamp());
+    //fprintf(stdout, "Got init_tx_ts: %ld\n", init_tx_ts.get_timestamp());
 
     return dwm_com_error_t::SUCCESS;
 }
@@ -199,7 +236,8 @@ dwm_com_error_t DWMRanging::do_response_ack_state(DW1000Time& ack_rx_ts)
 
 
     /* Start reception of packets */
-    _controller->start_receiving();
+    //_controller->start_receiving();
+    _controller->set_receiver_auto_reenable(true);
     
     // poll and check for error
     while (true)
@@ -224,7 +262,7 @@ dwm_com_error_t DWMRanging::do_response_ack_state(DW1000Time& ack_rx_ts)
 
     /* Note Timestamp of Reception */
     _controller->get_rx_timestamp(ack_rx_ts);
-    fprintf(stdout, "Got ack_rx_ts: %ld\n", ack_rx_ts.get_timestamp());
+    //fprintf(stdout, "Got ack_rx_ts: %ld\n", ack_rx_ts.get_timestamp());
 
     /* cleanup */
     delete ack_return;
@@ -255,6 +293,9 @@ dwm_com_error_t DWMRanging::do_final_state(DW1000Time& fin_tx_ts, uint16_t ancho
         .payload = { .final = {.type = twr_msg_type_t::TWR_MSG_TYPE_FINAL,}}
     };
 
+    /* */
+    _controller->set_receiver_auto_reenable(false);
+
     /* Write Packet payload to tx buffer */
     _controller->write_transmission_data((uint8_t*)&final_msg, sizeof(twr_message_t));
 
@@ -264,13 +305,13 @@ dwm_com_error_t DWMRanging::do_final_state(DW1000Time& fin_tx_ts, uint16_t ancho
     /* Poll for completion of transmission */
     ret = _controller->poll_tx_status();
     if (ret != SUCCESS) {
-        waitOutError();
+        //waitOutError();
         return ret;
     }
 
     /* Note time of transmission */
     _controller->get_tx_timestamp(fin_tx_ts);
-    fprintf(stdout, "Got fin_tx_ts: %ld\n", fin_tx_ts.get_timestamp());
+    //fprintf(stdout, "Got fin_tx_ts: %ld\n", fin_tx_ts.get_timestamp());
 
     return SUCCESS;
 }
@@ -291,7 +332,8 @@ dwm_com_error_t DWMRanging::do_report_state(DW1000Time& esp_init_rx_ts, DW1000Ti
     dwm_com_error_t ret = SUCCESS;  
 
     /* Start reception of packets */
-    _controller->start_receiving();
+    //_controller->start_receiving();
+    _controller->set_receiver_auto_reenable(true);
     
     // poll and check for error
     while (true)
@@ -343,22 +385,14 @@ dwm_com_error_t DWMRanging::get_distance_to_anchor(uint16_t anchor_addr, double*
     if (do_init_state(init_tx_ts, anchor_addr) == dwm_com_error_t::ERROR)
         return dwm_com_error_t::ERROR;
 
-    fprintf(stdout, "Init Sent\n");
-
     if (do_response_ack_state(ack_rx_ts) == dwm_com_error_t::ERROR)
         return dwm_com_error_t::ERROR;
 
-    fprintf(stdout, "Got response\n");
-
     if (do_final_state(fin_tx_ts, anchor_addr) == dwm_com_error_t::ERROR)
         return dwm_com_error_t::ERROR;
-
-    fprintf(stdout, "Sent Final\n");
-
+    
     if (do_report_state(esp_init_rx_ts, esp_resp_tx_ts, esp_fin_rx_ts) == dwm_com_error_t::ERROR)
         return dwm_com_error_t::ERROR;
-
-    fprintf(stdout, "got report\n");
 
     // return distance procedurally
     *distance = timestamps2distance(

@@ -6,8 +6,8 @@
 #include <stdint.h>	
 #include <time.h>
 
-#define DW1000_TIMEOUT  1e8     //< In Nanoseconds (100ms)
-#define RX_TIMEOUT      1e8     //< In Nanoseconds (100ms)
+#define DW1000_TIMEOUT  1e7     //< In Nanoseconds (100ms)
+#define RX_TIMEOUT      1e7     //< In Nanoseconds (100ms)
 #define RX_RETRY        2       //< Retrys
 
 typedef enum : uint8_t {

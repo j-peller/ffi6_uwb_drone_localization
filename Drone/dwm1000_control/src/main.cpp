@@ -14,7 +14,7 @@ int main() {
         .spi_bits_per_word = 8,
         .spi_mode = SPI_MODE_0,
         .gpiod_chip = "/dev/gpiochip4",
-        .irq_gpio_pin = 17,
+        .irq_gpio_pin = 26,
         .rst_gpio_pin = 27
     };
     DWMController* controller = DWMController::create_instance(&device);
@@ -23,9 +23,11 @@ int main() {
         return EXIT_FAILURE;
     }
 
+    /* Reset must be performed */
     controller->soft_reset();
-    usleep(1000000);
-    controller->set_mode(THOTRO110);
+    controller->set_mode(JOPEL110);
+    /* Interrupt Mask must match Status Mask */
+    controller->setIRQMask(SYS_MASK_MRXDFR | SYS_MASK_MTXFRS);
     usleep(1000000);
 
 
@@ -51,7 +53,7 @@ int main() {
     //        },
     //        .payload = { .report = {
     //            .type = twr_msg_type_t::TWR_MSG_TYPE_REPORT,
-    //            .finalTx = {0x12, 0x34, 0x56, 0x78, 0x9A}}}
+    //            .finalRx = {0x12, 0x34, 0x56, 0x78, 0x9A}}}
     //};
 
     //uint64_t ts = 0;
@@ -71,19 +73,13 @@ int main() {
      * Uncomment respective for testing
      */
 
-    DWMRanging tag = DWMRanging(controller);
+    DWMRanging* tag = DWMRanging::create_instance(controller);
     double distance = 0.0;
-    tag.get_distance_to_anchor(ANCHOR_1, &distance);
+    tag->get_distance_to_anchor(ANCHOR_1, &distance);
     fprintf(stdout, "Got distance: %lfm\n", distance);
 
 
-    //DWMRangingAnchor anchor = DWMRangingAnchor(controller);
-    //while(1) {
-    //    if (anchor.run_state_machine() == SUCCESS)
-    //        break; 
-    //}
-    //fprintf(stdout, "Anchor finished\n");
-
+    delete tag;
 
     return EXIT_SUCCESS;
 }

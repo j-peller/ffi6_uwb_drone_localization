@@ -218,11 +218,10 @@ dwm_com_error_t DWMRanging::do_init_state(DW1000Time& init_tx_ts, uint16_t ancho
         return ret;
     }
     
-    /* Note time of transmission */
+    /* Note time of transmission only if successfull */
     _controller->get_tx_timestamp(init_tx_ts);
-    //fprintf(stdout, "Got init_tx_ts: %ld\n", init_tx_ts.get_timestamp());
 
-    return dwm_com_error_t::SUCCESS;
+    return SUCCESS;
 }
 
 
@@ -250,7 +249,7 @@ dwm_com_error_t DWMRanging::do_response_ack_state(DW1000Time& ack_rx_ts)
         ret = _controller->poll_rx_status();
         if (ret != SUCCESS)
         {
-            waitOutError();
+            //return ret;
         } else {
             ret = _controller->read_received_data(&ack_len, (uint8_t**)&ack_return);
             if (ret != SUCCESS) {
@@ -346,7 +345,8 @@ dwm_com_error_t DWMRanging::do_report_state(DW1000Time& esp_init_rx_ts, DW1000Ti
         ret = _controller->poll_rx_status();
         if (ret != SUCCESS)
         {
-            waitOutError();
+            //waitOutError();
+            //return ret;
         } else {
             ret = _controller->read_received_data(&ack_len, (uint8_t**)&rprt_return);
             if (ret != SUCCESS) {
@@ -379,30 +379,92 @@ dwm_com_error_t DWMRanging::do_report_state(DW1000Time& esp_init_rx_ts, DW1000Ti
  * @param distance Pointer to write distance to.
  * @return dwm_com_error_t 
  */
+//dwm_com_error_t DWMRanging::get_distance_to_anchor(uint16_t anchor_addr, double* distance)
+//{
+//    // variables in method scope
+//    DW1000Time init_tx_ts, ack_rx_ts, fin_tx_ts;
+//    DW1000Time esp_init_rx_ts, esp_resp_tx_ts, esp_fin_rx_ts;
+//
+//    // go through state machine state by state and do the error handling accordingly
+//    if (do_init_state(init_tx_ts, anchor_addr) != SUCCESS)
+//        return dwm_com_error_t::ERROR;
+//
+//    if (do_response_ack_state(ack_rx_ts) != SUCCESS)
+//        return dwm_com_error_t::ERROR;
+//
+//    if (do_final_state(fin_tx_ts, anchor_addr) != SUCCESS)
+//        return dwm_com_error_t::ERROR;
+//    
+//    if (do_report_state(esp_init_rx_ts, esp_resp_tx_ts, esp_fin_rx_ts) != SUCCESS)
+//        return dwm_com_error_t::ERROR;
+//
+//    // return distance procedurally
+//    *distance = timestamps2distance(
+//        init_tx_ts, ack_rx_ts, fin_tx_ts,
+//        esp_init_rx_ts, esp_resp_tx_ts, esp_fin_rx_ts
+//    );
+//
+//    return dwm_com_error_t::SUCCESS;
+//}
+
+
+/**
+ * 
+ */
 dwm_com_error_t DWMRanging::get_distance_to_anchor(uint16_t anchor_addr, double* distance)
 {
+    int retries = 0;
+    RangingState state = RangingState::INIT;
+    dwm_com_error_t ret = SUCCESS;
+
     // variables in method scope
     DW1000Time init_tx_ts, ack_rx_ts, fin_tx_ts;
     DW1000Time esp_init_rx_ts, esp_resp_tx_ts, esp_fin_rx_ts;
+    bool timeout_occurred = false;
 
-    // go through state machine state by state and do the error handling accordingly
-    if (do_init_state(init_tx_ts, anchor_addr) != SUCCESS)
-        return dwm_com_error_t::ERROR;
+    while (state != RangingState::COMPLETE) {
 
-    if (do_response_ack_state(ack_rx_ts) != SUCCESS)
-        return dwm_com_error_t::ERROR;
+        switch (state) {
+            case RangingState::INIT:
+                ret = do_init_state(init_tx_ts, anchor_addr);
+                HANDLE_STATE_TRANSITION(ret, RangingState::RESP_ACK, RangingState::INIT, timeout_occurred);
+                break;
 
-    if (do_final_state(fin_tx_ts, anchor_addr) != SUCCESS)
-        return dwm_com_error_t::ERROR;
-    
-    if (do_report_state(esp_init_rx_ts, esp_resp_tx_ts, esp_fin_rx_ts) != SUCCESS)
-        return dwm_com_error_t::ERROR;
+            case RangingState::RESP_ACK:
+                ret = do_response_ack_state(ack_rx_ts);
+                HANDLE_STATE_TRANSITION(ret, RangingState::FINAL, RangingState::INIT, timeout_occurred);
+                break;
 
-    // return distance procedurally
+            case RangingState::FINAL:
+                ret = do_final_state(fin_tx_ts, anchor_addr);
+                HANDLE_STATE_TRANSITION(ret, RangingState::REPORT, RangingState::INIT, timeout_occurred);
+                break;
+
+            case RangingState::REPORT:
+                ret = do_report_state(esp_init_rx_ts, esp_resp_tx_ts, esp_fin_rx_ts);
+                HANDLE_STATE_TRANSITION(ret, RangingState::COMPLETE, RangingState::INIT, timeout_occurred);
+                break;
+
+            case RangingState::COMPLETE:
+                break;
+        }
+
+        if (timeout_occurred) {
+            retries++;
+            timeout_occurred = false;
+            if (retries >= MAX_RETRY_ON_FAILURE) {
+                fprintf(stdout, "Max retries reached. Exiting...\n");
+                return dwm_com_error_t::ERROR;
+            }
+            waitOutError();
+        }
+    }
+
     *distance = timestamps2distance(
         init_tx_ts, ack_rx_ts, fin_tx_ts,
         esp_init_rx_ts, esp_resp_tx_ts, esp_fin_rx_ts
     );
 
-    return dwm_com_error_t::SUCCESS;
+    return ret;
 }
+

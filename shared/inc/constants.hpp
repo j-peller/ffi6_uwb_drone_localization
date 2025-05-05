@@ -9,6 +9,7 @@
 #define DW1000_TIMEOUT  1e7     //< In Nanoseconds (100ms)
 #define RX_TIMEOUT      1e7     //< In Nanoseconds (100ms)
 #define RX_RETRY        2       //< Retrys
+#define MAX_RETRY_ON_FAILURE 3  //< Maximum number of retries on failure of a ranging operation
 
 typedef enum : uint8_t {
     SUCCESS = 0x00,

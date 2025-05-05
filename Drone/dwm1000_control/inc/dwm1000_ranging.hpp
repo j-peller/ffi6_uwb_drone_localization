@@ -12,6 +12,19 @@
 
 #include <memory>
 
+
+// Helper macro for state transitions (put in header)
+#define HANDLE_STATE_TRANSITION(ret_val, next_state, timeout_state, timeout_occurred) \
+    if (ret_val == dwm_com_error_t::SUCCESS) { \
+        state = next_state; \
+    } \
+    else if (ret_val == dwm_com_error_t::TIMEOUT) { \
+        state = timeout_state; \
+        timeout_occurred = true; \
+    } else { \
+        return ret_val; \
+    }
+
 /**
  * Perform ranging to a set of anchors
  */
@@ -39,10 +52,23 @@ private:
         DW1000Time& esp_init_rx_ts, DW1000Time& esp_resp_tx_ts, DW1000Time& esp_fin_rx_ts);
     static void waitOutError();
 
+    inline bool checkForTimeout(dwm_com_error_t ret) {
+        return (ret == dwm_com_error_t::TIMEOUT);
+    };
+
+public:
+    enum class RangingState {
+        INIT,
+        RESP_ACK,
+        FINAL,
+        REPORT,
+        COMPLETE
+    };
 
 private:
     /* DWM1000 of the Drone to send and receive messages */
     DWMController*  _controller;
+
 
 };
 

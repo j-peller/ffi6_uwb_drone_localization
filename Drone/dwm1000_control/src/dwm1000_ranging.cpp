@@ -426,23 +426,30 @@ dwm_com_error_t DWMRanging::get_distance_to_anchor(uint16_t anchor_addr, double*
 
         switch (state) {
             case RangingState::INIT:
+                fprintf(stdout, "INIT\n");
                 ret = do_init_state(init_tx_ts, anchor_addr);
                 HANDLE_STATE_TRANSITION(ret, RangingState::RESP_ACK, RangingState::INIT, timeout_occurred);
                 break;
 
             case RangingState::RESP_ACK:
+                fprintf(stdout, "RESP\n");
                 ret = do_response_ack_state(ack_rx_ts);
                 HANDLE_STATE_TRANSITION(ret, RangingState::FINAL, RangingState::INIT, timeout_occurred);
+                retries = 0;
                 break;
 
             case RangingState::FINAL:
+                fprintf(stdout, "FINAL\n");
                 ret = do_final_state(fin_tx_ts, anchor_addr);
                 HANDLE_STATE_TRANSITION(ret, RangingState::REPORT, RangingState::INIT, timeout_occurred);
+                retries = 0;
                 break;
 
             case RangingState::REPORT:
+                fprintf(stdout, "REPORT\n");
                 ret = do_report_state(esp_init_rx_ts, esp_resp_tx_ts, esp_fin_rx_ts);
                 HANDLE_STATE_TRANSITION(ret, RangingState::COMPLETE, RangingState::INIT, timeout_occurred);
+                retries = 0;
                 break;
 
             case RangingState::COMPLETE:

@@ -21,6 +21,7 @@
     else if (ret_val == dwm_com_error_t::TIMEOUT) { \
         state = timeout_state; \
         timeout_occurred = true; \
+        break; \
     } else { \
         return ret_val; \
     }

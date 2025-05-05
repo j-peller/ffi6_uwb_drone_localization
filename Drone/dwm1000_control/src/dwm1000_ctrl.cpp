@@ -551,7 +551,10 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t ti
 
         }
         else if (gpio_ret == 0) {
-            fprintf(stderr, "No Events Available, Timeout\n");
+            //readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &sys_status);
+            fprintf(stderr, "No Events Available, Timeout\n", sys_status);
+            /* if we dont do this, we get stuck after some time because interrupts dont get cleared */
+            //clearStatusEvent(status_mask);
         } 
         else {
             fprintf(stderr, "Some error? Ready: %d\n", gpio_ret);

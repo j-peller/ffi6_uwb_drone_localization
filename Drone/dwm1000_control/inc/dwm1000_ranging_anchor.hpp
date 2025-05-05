@@ -4,6 +4,7 @@
 #define DWM1000_RANGING_ANCHOR_HPP
 
 #include "dwm1000_ctrl.hpp"
+#include "dwm1000_ranging.hpp"
 #include "dw1000_time.hpp"
 #include "../../../shared/inc/constants.hpp"
 #include "../../../shared/inc/helpers.hpp"
@@ -36,6 +37,14 @@ private:
     dwm_com_error_t do_report_state(uint16_t anchor_addr);
 
     static void waitOutError();
+
+    enum class RangingState {
+        INIT,
+        RESP_ACK,
+        FINAL,
+        REPORT,
+        COMPLETE
+    };
 
 
 private:

@@ -249,7 +249,7 @@ dwm_com_error_t DWMRanging::do_response_ack_state(DW1000Time& ack_rx_ts)
         ret = _controller->poll_rx_status();
         if (ret != SUCCESS)
         {
-            //return ret;
+            return ret;
         } else {
             ret = _controller->read_received_data(&ack_len, (uint8_t**)&ack_return);
             if (ret != SUCCESS) {
@@ -346,7 +346,7 @@ dwm_com_error_t DWMRanging::do_report_state(DW1000Time& esp_init_rx_ts, DW1000Ti
         if (ret != SUCCESS)
         {
             //waitOutError();
-            //return ret;
+            return ret;
         } else {
             ret = _controller->read_received_data(&ack_len, (uint8_t**)&rprt_return);
             if (ret != SUCCESS) {
@@ -456,7 +456,7 @@ dwm_com_error_t DWMRanging::get_distance_to_anchor(uint16_t anchor_addr, double*
                 fprintf(stdout, "Max retries reached. Exiting...\n");
                 return dwm_com_error_t::ERROR;
             }
-            waitOutError();
+            //waitOutError();
         }
     }
 

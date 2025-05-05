@@ -48,10 +48,12 @@ dwm_com_error_t DWMRangingAnchor::do_init_state()
     {
         /* Poll for the reception of a packet */
         ret = _controller->poll_rx_status();
-        if (ret != SUCCESS)
+        if (ret == TIMEOUT)
         {
-            // for testing only...
-            waitOutError();
+            continue; //< we dont care for timeout in init state
+        } else if (ret == ERROR) {
+            //waitOutError();
+            return ret;
         } else {
             ret = _controller->read_received_data(&ack_len, (uint8_t**)&ack_return);
             if (ret != SUCCESS) {
@@ -143,7 +145,7 @@ dwm_com_error_t DWMRangingAnchor::do_final_state()
         if (ret != SUCCESS)
         {
             // for testing only...
-            waitOutError();
+            return ret;
         } else {
             ret = _controller->read_received_data(&ack_len, (uint8_t**)&fin_return);
             if (ret != SUCCESS) {
@@ -214,33 +216,84 @@ dwm_com_error_t DWMRangingAnchor::do_report_state(uint16_t anchor_addr)
     return SUCCESS;
 }
 
+//dwm_com_error_t DWMRangingAnchor::run_state_machine()
+//{
+//    dwm_com_error_t ret = SUCCESS;
+//
+//    if ( (ret =  do_init_state()) != SUCCESS ) {
+//        fprintf(stdout, "Error in init state %d\n", ret);
+//        return ret;
+//    }
+//    fprintf(stdout, "Got Init\n");
+//
+//    if ( (ret = do_response_ack_state(ANCHOR_1)) != SUCCESS) {
+//        fprintf(stdout, "Error in response state %d\n", ret);
+//        return ret;
+//    }
+//    fprintf(stdout, "Sent Response\n");
+//    
+//    if ( (ret = do_final_state()) != SUCCESS) {
+//        fprintf(stdout, "Error in final state %d\n", ret);
+//        return ret;
+//    }
+//    fprintf(stdout, "Got Final\n");
+//
+//    if ( (ret = do_report_state(ANCHOR_1)) != SUCCESS) {
+//        fprintf(stdout, "Error in report state %d\n", ret);
+//        return ret;
+//    }
+//    fprintf(stdout, "Send Report\n");
+//
+//    return ret;
+//}
+
+
 dwm_com_error_t DWMRangingAnchor::run_state_machine()
 {
+    int retries = 0;
+    RangingState state = RangingState::INIT;
     dwm_com_error_t ret = SUCCESS;
 
-    if ( (ret =  do_init_state()) != SUCCESS ) {
-        fprintf(stdout, "Error in init state %d\n", ret);
-        return ret;
-    }
-    fprintf(stdout, "Got Init\n");
+    // variables in method scope
+    bool timeout_occurred = false;
 
-    if ( (ret = do_response_ack_state(ANCHOR_1)) != SUCCESS) {
-        fprintf(stdout, "Error in response state %d\n", ret);
-        return ret;
-    }
-    fprintf(stdout, "Sent Response\n");
-    
-    if ( (ret = do_final_state()) != SUCCESS) {
-        fprintf(stdout, "Error in final state %d\n", ret);
-        return ret;
-    }
-    fprintf(stdout, "Got Final\n");
+    while (state != RangingState::COMPLETE) {
 
-    if ( (ret = do_report_state(ANCHOR_1)) != SUCCESS) {
-        fprintf(stdout, "Error in report state %d\n", ret);
-        return ret;
-    }
-    fprintf(stdout, "Send Report\n");
+        switch (state) {
+            case RangingState::INIT:
+                ret = do_init_state();
+                HANDLE_STATE_TRANSITION(ret, RangingState::RESP_ACK, RangingState::INIT, timeout_occurred);
+                break;
 
-    return ret;
+            case RangingState::RESP_ACK:
+                ret = do_response_ack_state(ANCHOR_1);
+                HANDLE_STATE_TRANSITION(ret, RangingState::FINAL, RangingState::INIT, timeout_occurred);
+                break;
+
+            case RangingState::FINAL:
+                ret = do_final_state();
+                HANDLE_STATE_TRANSITION(ret, RangingState::REPORT, RangingState::INIT, timeout_occurred);
+                break;
+
+            case RangingState::REPORT:
+                ret = do_report_state(ANCHOR_1);
+                HANDLE_STATE_TRANSITION(ret, RangingState::COMPLETE, RangingState::INIT, timeout_occurred);
+                break;
+
+            case RangingState::COMPLETE:
+                break;
+        }
+
+        if (timeout_occurred) {
+            retries++;
+            timeout_occurred = false;
+            if (retries >= MAX_RETRY_ON_FAILURE) {
+                fprintf(stdout, "Max retries reached. Exiting...\n");
+                return dwm_com_error_t::ERROR;
+            }
+            waitOutError();
+        }
+    }
+
+    return dwm_com_error_t::SUCCESS;
 }

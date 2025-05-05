@@ -113,28 +113,26 @@ DWMRanging::~DWMRanging()
  * @return double Represents the distance in meters to the anchor.
  */
 double DWMRanging::timestamps2distance(
-    DW1000Time& init_tx_ts, DW1000Time& ack_rx_ts, DW1000Time& fin_tx_ts,
-    DW1000Time& esp_init_rx_ts, DW1000Time& esp_resp_tx_ts,
-    DW1000Time& esp_fin_rx_ts
+    DW1000Time& t_sp, DW1000Time& t_ra, DW1000Time& t_sf,
+    DW1000Time& t_rp, DW1000Time& t_sa, DW1000Time& t_rf 
 ) {
-    DW1000Time t_round1 = ack_rx_ts - init_tx_ts;
-    DW1000Time t_round2 = esp_fin_rx_ts - esp_resp_tx_ts;
-    DW1000Time t_reply1 = esp_resp_tx_ts - esp_init_rx_ts;
-    DW1000Time t_reply2 = fin_tx_ts - ack_rx_ts;
+    DW1000Time t_round1 = (t_ra - t_sp).wrap();
+    DW1000Time t_round2 = (t_rf - t_sa).wrap();
+    DW1000Time t_reply1 = (t_sa - t_rp).wrap();
+    DW1000Time t_reply2 = (t_sf - t_ra).wrap();
 
-    //fprintf(stdout, "r_round1: %ld\n", t_round1.get_timestamp());
-    //fprintf(stdout, "r_round2: %ld\n", t_round2.get_timestamp());
-    //fprintf(stdout, "r_reply1: %ld\n", t_reply1.get_timestamp());
-    //fprintf(stdout, "r_reply2: %ld\n", t_reply2.get_timestamp());
+    fprintf(stdout, "r_round1: %ld\n", t_round1.get_timestamp());
+    fprintf(stdout, "r_round2: %ld\n", t_round2.get_timestamp());
+    fprintf(stdout, "r_reply1: %ld\n", t_reply1.get_timestamp());
+    fprintf(stdout, "r_reply2: %ld\n", t_reply2.get_timestamp());
 
     DW1000Time time_of_flight = ((t_round1 * t_round2) - (t_reply1 * t_reply2)) / (t_round1 + t_round2 + t_reply1 + t_reply2);
 
-    double distance = (double)time_of_flight.get_timestamp() * DW1000Time::DISTANCE_PER_US_M;
 
-    //fprintf(stdout, "ToF: %ld\n", time_of_flight.get_timestamp());
+    fprintf(stdout, "ToF: %ld\n", time_of_flight.get_timestamp());
 
     // calculate and return distance from TOF
-    return distance;
+    return time_of_flight.get_as_meters();
 }
 
 /**
@@ -418,8 +416,8 @@ dwm_com_error_t DWMRanging::get_distance_to_anchor(uint16_t anchor_addr, double*
     dwm_com_error_t ret = SUCCESS;
 
     // variables in method scope
-    DW1000Time init_tx_ts, ack_rx_ts, fin_tx_ts;
-    DW1000Time esp_init_rx_ts, esp_resp_tx_ts, esp_fin_rx_ts;
+    DW1000Time t_sp, t_ra, t_sf;
+    DW1000Time t_rp, t_sa, t_rf;
     bool timeout_occurred = false;
 
     while (state != RangingState::COMPLETE) {
@@ -427,27 +425,27 @@ dwm_com_error_t DWMRanging::get_distance_to_anchor(uint16_t anchor_addr, double*
         switch (state) {
             case RangingState::INIT:
                 fprintf(stdout, "INIT\n");
-                ret = do_init_state(init_tx_ts, anchor_addr);
+                ret = do_init_state(t_sp, anchor_addr);
                 HANDLE_STATE_TRANSITION(ret, RangingState::RESP_ACK, RangingState::INIT, timeout_occurred);
                 break;
 
             case RangingState::RESP_ACK:
                 fprintf(stdout, "RESP\n");
-                ret = do_response_ack_state(ack_rx_ts);
+                ret = do_response_ack_state(t_ra);
                 HANDLE_STATE_TRANSITION(ret, RangingState::FINAL, RangingState::INIT, timeout_occurred);
                 retries = 0;
                 break;
 
             case RangingState::FINAL:
                 fprintf(stdout, "FINAL\n");
-                ret = do_final_state(fin_tx_ts, anchor_addr);
+                ret = do_final_state(t_sf, anchor_addr);
                 HANDLE_STATE_TRANSITION(ret, RangingState::REPORT, RangingState::INIT, timeout_occurred);
                 retries = 0;
                 break;
 
             case RangingState::REPORT:
                 fprintf(stdout, "REPORT\n");
-                ret = do_report_state(esp_init_rx_ts, esp_resp_tx_ts, esp_fin_rx_ts);
+                ret = do_report_state(t_rp, t_sa, t_rf);
                 HANDLE_STATE_TRANSITION(ret, RangingState::COMPLETE, RangingState::INIT, timeout_occurred);
                 retries = 0;
                 break;
@@ -468,8 +466,8 @@ dwm_com_error_t DWMRanging::get_distance_to_anchor(uint16_t anchor_addr, double*
     }
 
     *distance = timestamps2distance(
-        init_tx_ts, ack_rx_ts, fin_tx_ts,
-        esp_init_rx_ts, esp_resp_tx_ts, esp_fin_rx_ts
+        t_sp, t_ra, t_sf,
+        t_rp, t_sa, t_rf 
     );
 
     return ret;

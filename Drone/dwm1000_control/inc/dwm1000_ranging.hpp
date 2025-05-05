@@ -42,15 +42,14 @@ private:
     DWMRanging();
     DWMRanging(DWMController* controller);
 
-    dwm_com_error_t do_init_state(DW1000Time& init_tx_ts, uint16_t anchor_addr);
-    dwm_com_error_t do_response_ack_state(DW1000Time& ack_rx_ts);
-    dwm_com_error_t do_final_state(DW1000Time& fin_tx_ts, uint16_t anchor_addr);
-    dwm_com_error_t do_report_state(DW1000Time& esp_init_rx_ts, DW1000Time&
-         esp_resp_tx_ts, DW1000Time& esp_fin_rx_t);
+    dwm_com_error_t do_init_state(DW1000Time& t_sp, uint16_t anchor_addr);
+    dwm_com_error_t do_response_ack_state(DW1000Time& t_ra);
+    dwm_com_error_t do_final_state(DW1000Time& t_sf, uint16_t anchor_addr);
+    dwm_com_error_t do_report_state(DW1000Time& t_rp, DW1000Time& t_sa, DW1000Time& t_rf);
 
-    static double timestamps2distance(
-        DW1000Time& init_tx_ts, DW1000Time& ack_rx_ts, DW1000Time& fin_tx_ts, 
-        DW1000Time& esp_init_rx_ts, DW1000Time& esp_resp_tx_ts, DW1000Time& esp_fin_rx_ts);
+    double timestamps2distance( DW1000Time& t_sp, DW1000Time& t_ra, DW1000Time& t_sf,
+        DW1000Time& t_rp, DW1000Time& t_sa, DW1000Time& t_rf);
+
     static void waitOutError();
 
     inline bool checkForTimeout(dwm_com_error_t ret) {

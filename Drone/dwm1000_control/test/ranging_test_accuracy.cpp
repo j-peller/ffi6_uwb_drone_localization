@@ -55,7 +55,9 @@ TEST_F(RangingTest, RangingStatistics) {
             //continue;  // Skip this iteration if there's an error
         }
         distances.push_back(dist);
-        usleep(250000);  // Sleep for 100ms between measurements
+
+        // Not sleeping even better?!?! - wtf
+        //usleep(200000);  // Sleep for 200ms between measurements. This works best without  getting stuck in the loop.
     }
 
     // Write to output file

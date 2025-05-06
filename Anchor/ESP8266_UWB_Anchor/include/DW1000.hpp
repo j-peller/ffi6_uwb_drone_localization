@@ -81,19 +81,20 @@ enum class FrameLength : uint8_t {
 
 enum class InterruptTable : uint32_t{
     INTERRUPT_ON_TX = SYS_STATUS_TXFRS,               // transmit frame sent event
-    INTERRUPT_ON_RX = 1 << 12,              // receiver data frame ready event
-    INTERRUPT_ON_RX_CRC_GOOD = 1 << 13,     // receiver FCS good event
-    INTERRUPT_ON_RX_CRC_BAD = 1 << 14,      // receiver FCS error event
-    INTERRUPT_ON_RX_FAIL_LDEERR = 1 << 17,  // leading edge detection processing error event
-    INTERRUPT_ON_RX_FAIL_PHE = 1 << 11,     // receiver PHY header error even
-    INTERRUPT_ON_RX_FAIL_RFSL = 1 << 15,    // Reed Solomon Frame Sync Loss event
-    INTERRUPT_ON_RX_TIMEOUT = 1 << 16,      // Receive Frame Wait Timeout event
-    INTERRUPT_ON_LDE_DONE = 1 << 9,         // LDE processing done event
-    INTERRUPT_ON_AUTOMATIC_ACK = 1 << 2,     // automatic acknowledge trigger event
+    INTERRUPT_ON_RX = SYS_STATUS_RXDFR,             // receiver data frame ready event
+    INTERRUPT_ON_RX_CRC_GOOD = SYS_STATUS_RXFCG,     // receiver FCS good event
+    INTERRUPT_ON_RX_CRC_BAD = SYS_STATUS_RXFCE,      // receiver FCS error event
+    INTERRUPT_ON_RX_FAIL_LDEERR = SYS_STATUS_LDEERR,  // leading edge detection processing error event
+    INTERRUPT_ON_RX_FAIL_PHE = SYS_STATUS_RXPHE,     // receiver PHY header error even
+    INTERRUPT_ON_RX_FAIL_RFSL = SYS_STATUS_RXRFSL,    // Reed Solomon Frame Sync Loss event
+    INTERRUPT_ON_RX_TIMEOUT = SYS_STATUS_RXRFTO,      // Receive Frame Wait Timeout event
+    INTERRUPT_ON_LDE_DONE = SYS_STATUS_LDEDONE,         // LDE processing done event
+    INTERRUPT_ON_AUTOMATIC_ACK = SYS_STATUS_AAT,     // automatic acknowledge trigger event
 
     INTERRUPT_ALL = INTERRUPT_ON_TX | INTERRUPT_ON_RX | INTERRUPT_ON_RX_CRC_GOOD | INTERRUPT_ON_RX_CRC_BAD |
                     INTERRUPT_ON_RX_FAIL_LDEERR | INTERRUPT_ON_RX_FAIL_PHE | INTERRUPT_ON_RX_FAIL_RFSL | INTERRUPT_ON_RX_TIMEOUT |
-                    INTERRUPT_ON_LDE_DONE | INTERRUPT_ON_AUTOMATIC_ACK
+                    INTERRUPT_ON_LDE_DONE | INTERRUPT_ON_AUTOMATIC_ACK,
+    INTERRUPT_ALL_ALL = INTERRUPT_ALL | 0b111111111101111111111100001110,//0b111111111101111111111111111110,
     
 };
 inline InterruptTable operator|(InterruptTable lhs, InterruptTable rhs) {

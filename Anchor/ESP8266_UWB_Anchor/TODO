@@ -16,3 +16,7 @@ MEASUREMENT_ACTIVE: Ist nicht da wo das Programm sein sollte, so schnell wie mö
 remove interrupttable and use register defines instead
 
 Man könnte statt nur text eventuell auch einen konsistenten state loggen
+
+
+C:\Users\mario\.platformio\penv\Scripts\platformio.exe device monitor -p COM3
+C:\Users\mario\.platformio\penv\Scripts\platformio.exe run --target upload --upload-port COM3

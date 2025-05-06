@@ -48,7 +48,7 @@ void loop()
     }
     if(result.state != RangingState::MEASURING) {
       DW1000RangingTag* tag = (DW1000RangingTag*) dw1000ranging;
-      tag->getDistanceToAnchor(0xAAAA, &result);
+      tag->getDistanceToAnchor(0xBBBB, &result);
     }
   }
 }

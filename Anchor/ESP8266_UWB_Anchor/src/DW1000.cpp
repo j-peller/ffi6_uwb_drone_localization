@@ -326,6 +326,7 @@ void DW1000::loadLDECode()
     pmsc_ctrl0[1] = 0x03;
     logger->output("pmsc %x %x %x %x", pmsc_ctrl0[3], pmsc_ctrl0[2], pmsc_ctrl0[1], pmsc_ctrl0[0]);
     writeBytes(PMSC_ID, PMSC_CTRL0_OFFSET, pmsc_ctrl0, PMSC_CTRL0_LEN);
+    
     writeBytes(OTP_IF_ID, OTP_CTRL, otpctrl, OTP_CTRL_LEN);
 
     delayMicroseconds(150);
@@ -381,8 +382,14 @@ void DW1000::setFrameLength(FrameLength frame_length)
 void DW1000::enableInterrupts(enum InterruptTable table)
 {
     writeBytes(SYS_MASK_ID, NO_SUB_ADDRESS, static_cast<uint32_t>(table));
-    uint32_t test = 0;
-    readBytes(SYS_MASK_ID, NO_SUB_ADDRESS, &test);
+    writeBytes(SYS_MASK_ID, NO_SUB_ADDRESS, static_cast<uint32_t>(table)); //todo crazy, but when writing twice, it works, otherwise not (fuck you dwm1000)
+    
+    logger->addBuffer("sys_mask should be now! %x", static_cast<uint32_t>(table));
+
+
+    uint32_t sys_mask = 0;
+    readBytes(SYS_MASK_ID, NO_SUB_ADDRESS, &sys_mask);
+    if(logger!=nullptr) logger->addBuffer("sys_mask is now! %x", sys_mask);
 }
 
 void DW1000::writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t length)
@@ -493,7 +500,7 @@ void DW1000::handleInterrupt()
         } 
     }
 
-    //clearStatusRegister(); !Dont clear everything!
+    clearStatusRegister(); //!Dont clear everything!
 
     if(sys_status & SYS_STATUS_RXDFR)
     {
@@ -552,12 +559,28 @@ void DW1000::readReceivedData(uint8_t** data, uint16_t* length)
 {
     /* get length of received data from Frame Info register */
     uint16_t len = getReceivedDataLength();
-    len-=2; //TODO check if this is correct
+
+    uint32_t sys_status = 0;
+    readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &sys_status);
+    if(logger!=nullptr) logger->addBuffer("sys_status is currently! %x", sys_status);
+
+    uint32_t decid = 0;
+    readBytes(DEV_ID_ID, NO_SUB_ADDRESS, &decid);
+    if(logger!=nullptr) logger->addBuffer("decid is currently! %x", decid);
+
+    uint32_t sys_mask = 0;
+    readBytes(SYS_MASK_ID, NO_SUB_ADDRESS, &sys_mask);
+    if(logger!=nullptr) logger->addBuffer("sys_mask is currently! %x", sys_mask);
+    
+
+
+    Serial.println(len);
+    //len-=2; //TODO check if this is correct
     /* TODO: Check if FCS is good */
 
     /* */
     uint8_t* rx_data = new uint8_t[len];
-
+    
     if (rx_data == nullptr) {
         if(logger != nullptr) logger->addBuffer("Failed to allocate memory for received data with length 0x%x", *length);
         return;
@@ -568,7 +591,7 @@ void DW1000::readReceivedData(uint8_t** data, uint16_t* length)
     /* update the length of the received buffer */
     *length = len;
     *data = rx_data;
-
+    
     /* delete received data length to prevent double read accesses */
     deleteReceivedDataLength();
 }

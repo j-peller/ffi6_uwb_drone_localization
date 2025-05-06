@@ -1,6 +1,6 @@
 #include "DW1000Ranging.hpp"
 
-uint16_t pan = 0xDECA;
+uint16_t pan = 0xAFFE;
 
 DW1000Ranging::DW1000Ranging(DW1000 &dw1000) : dw1000(dw1000)
 {
@@ -33,6 +33,7 @@ DW1000Ranging::DW1000Ranging(DW1000 &dw1000) : dw1000(dw1000)
     dw1000.loadLDECode();
     dw1000.setPANAdress(pan);
     interrupts |= InterruptTable::INTERRUPT_ALL;
+    interrupts |= InterruptTable::INTERRUPT_ALL_ALL;
     dw1000.enableInterrupts(interrupts);
    
     dw1000.setMode(thotro110);

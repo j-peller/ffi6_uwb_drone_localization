@@ -116,6 +116,14 @@ double DWMRanging::timestamps2distance(
     DW1000Time& t_sp, DW1000Time& t_ra, DW1000Time& t_sf,
     DW1000Time& t_rp, DW1000Time& t_sa, DW1000Time& t_rf 
 ) {
+
+    fprintf(stdout, "t_sp: %ld\n", t_sp.get_timestamp());
+    fprintf(stdout, "t_ra: %ld\n", t_ra.get_timestamp());
+    fprintf(stdout, "t_sf: %ld\n", t_sf.get_timestamp());
+    fprintf(stdout, "t_rp: %ld\n", t_rp.get_timestamp());
+    fprintf(stdout, "t_sa: %ld\n", t_sa.get_timestamp());
+    fprintf(stdout, "t_rf: %ld\n", t_rf.get_timestamp());
+    
     DW1000Time t_round1 = (t_ra - t_sp).wrap();
     DW1000Time t_round2 = (t_rf - t_sa).wrap();
     DW1000Time t_reply1 = (t_sa - t_rp).wrap();

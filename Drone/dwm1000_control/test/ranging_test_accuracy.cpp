@@ -45,19 +45,27 @@ protected:
 
 // Google Test
 TEST_F(RangingTest, RangingStatistics) {
-    std::vector<double> distances;
     distances.reserve(numIterations);
+
+    int totalAttempts = 0;
+    int failedAttempts = 0;
+    int zeroDistanceCount = 0;
 
     // Collect distance measurements
     for (int i = 0; i < numIterations; ++i) {
+        totalAttempts++;
         double dist = 0.0;
         if (tag->get_distance_to_anchor(ANCHOR_1, &dist) == dwm_com_error_t::ERROR) {
-            //continue;  // Skip this iteration if there's an error
+            failedAttempts++;
+            continue;  // Skip this iteration if there's an error
         }
+
+        if (dist == 0.0) {
+            zeroDistanceCount++;
+        }
+        
         distances.push_back(dist);
 
-        // Not sleeping even better?!?! - wtf
-        //usleep(200000);  // Sleep for 200ms between measurements. This works best without  getting stuck in the loop.
     }
 
     // Write to output file
@@ -69,4 +77,12 @@ TEST_F(RangingTest, RangingStatistics) {
     }
 
     outFile.close();
+    
+    // Output basic statistics
+    fprintf(stdout, "Total Attempts     : %d\n", totalAttempts);
+    fprintf(stdout, "Failed Attempts    : %d\n", failedAttempts);
+    fprintf(stdout, "Valid Measurements : %d\n", totalAttempts - failedAttempts);
+
+    ASSERT_EQ(failedAttempts, 0) << "Some attempts failed.";
+    ASSERT_EQ(zeroDistanceCount, 0) << "Some distances were 0.0, which may indicate invalid measurements.";
 }

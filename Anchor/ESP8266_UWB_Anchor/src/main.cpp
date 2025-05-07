@@ -28,6 +28,7 @@ void setup()
   {
     dw1000ranging = new DW1000RangingAnchor(dw1000, 0xBBBB, 0xAAAA);
   }
+  logger.setDeviceID(dw1000ranging->getDeviceAddress());
 }
 
 void loop()

@@ -19,6 +19,7 @@ DW1000Ranging::DW1000Ranging(DW1000 &dw1000) : dw1000(dw1000)
         .preamble_code = 0x09,
         .preamble_length = TX_FCTRL_TXPSR_PE_1024,
         .sfd = SFD::STD,
+        .tune = tuneTest,
     };
 
     Mode thotro110 {
@@ -28,6 +29,7 @@ DW1000Ranging::DW1000Ranging(DW1000 &dw1000) : dw1000(dw1000)
         .preamble_code = 0x04,
         .preamble_length = TX_FCTRL_TXPSR_PE_2048,
         .sfd = SFD::STD,
+        .tune = tuneTest,
     };
     
     dw1000.loadLDECode();
@@ -35,7 +37,7 @@ DW1000Ranging::DW1000Ranging(DW1000 &dw1000) : dw1000(dw1000)
     interrupts |= InterruptTable::INTERRUPT_ALL;
     interrupts |= InterruptTable::INTERRUPT_ALL_ALL;
     dw1000.enableInterrupts(interrupts);
-   
+    dw1000.setDiagnostic(true);
     dw1000.setMode(thotro110);
     if(dw1000.logger != nullptr)
     {
@@ -46,7 +48,11 @@ DW1000Ranging::DW1000Ranging(DW1000 &dw1000) : dw1000(dw1000)
 
 void DW1000Ranging::loop()
 {
-
+    dw1000.log();
+}
+uint16_t DW1000Ranging::getDeviceAddress()
+{
+    return dw1000.getDeviceID();
 }
 
 void DW1000Ranging::twr_send(twr_message_t message)

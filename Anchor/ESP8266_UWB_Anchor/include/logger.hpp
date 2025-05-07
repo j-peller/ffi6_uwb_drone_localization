@@ -2,7 +2,7 @@
 #include "wifi_handler.hpp"
 
 #define MAX_MESSAGE_LENGTH 100
-#define MAX_MESSAGES 10
+#define MAX_MESSAGES 50
 class Logger
 {
     private:

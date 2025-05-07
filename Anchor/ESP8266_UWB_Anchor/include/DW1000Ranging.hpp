@@ -47,7 +47,7 @@ class DW1000Ranging
         void twr_send(twr_message_t message);
         void updateTime();
         bool isTimedOut();
-        
+        uint16_t getDeviceAddress();
 };
 
 class DW1000RangingTag : public DW1000Ranging
@@ -66,6 +66,7 @@ class DW1000RangingTag : public DW1000Ranging
         void reportStateIRQHandler(uint32_t sys_status);
         void getDistanceToAnchor(uint16_t anchor_address, RangingResult* rangingResult);
         void resetTimestamps();
+        
 };
 
 class DW1000RangingAnchor : public DW1000Ranging

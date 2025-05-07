@@ -13,7 +13,7 @@ void DW1000RangingTag::pollStateIRQHandler(uint32_t sys_status)
     if(sys_status & SYS_STATUS_TXFRS)
     {
         dw1000.get_tx_timestamp(init_tx_ts);
-        dw1000.logger->addBuffer("TX TIMESTAMP");
+        dw1000.logger->addBuffer("TX TIMESTAMP %x", init_tx_ts.get_timestamp());
         clear_mask |= (SYS_STATUS_TXFRS);
         dw1000.startReceiving();
     }

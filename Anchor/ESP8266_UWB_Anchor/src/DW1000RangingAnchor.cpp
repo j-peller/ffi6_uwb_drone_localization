@@ -93,7 +93,7 @@ void DW1000RangingAnchor::loop()
                 //dw1000.enableInterrupts((InterruptTable) 0b11111111111111111111111111111111);
                 dw1000.addCustomInterruptHandler(InterruptTable::INTERRUPT_ON_LDE_DONE, [this](uint32_t value) { this->pollStateIRQHandler(value); });
                 dw1000.startReceiving();
-                dw1000.setReceiverAutoReenable(true);
+                dw1000.setReceiverAutoReenable(false);
                 dw1000.logger->addBuffer("Listening for Polls");
                 
             } else {

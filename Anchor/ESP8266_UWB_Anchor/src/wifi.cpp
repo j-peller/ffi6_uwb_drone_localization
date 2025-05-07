@@ -6,6 +6,8 @@
 
 const void WifiHandler::begin()
 {
+    WiFi.mode(WIFI_OFF);
+    /* 
     Serial.print("Connecting to WiFi ");
     WiFi.begin(SSID, PWD);
 
@@ -27,6 +29,7 @@ const void WifiHandler::begin()
         Serial.println("");
         Serial.println("Failed to connect to WiFi");
     }
+        */
 }
 
 const void WifiHandler::connectWS()
@@ -42,7 +45,7 @@ const void WifiHandler::connectWS()
 
 const void WifiHandler::connectWifi()
 {
-    WiFi.begin(SSID, PWD);
+    //WiFi.begin(SSID, PWD);
 }
 const void WifiHandler::loop()
 {

@@ -88,6 +88,10 @@ Channel channel7 = {
     .fs_pllcfg = FS_PLLCFG_CH7,
 };
 
+Tune tuneTest = {
+    .drx_tune2 = DRX_TUNE2_PRF64_PAC64,
+};
+
 static void IRAM_ATTR dw1000_interrupt_handler(void* arg) {
     DW1000* instance = static_cast<DW1000*>(arg);
     instance->handleInterrupt();
@@ -104,6 +108,14 @@ void DW1000::setReceiverAutoReenable(boolean val)
 
 void DW1000::setMode(Mode mode)
 {
+
+    /* Clock PLL lock detect tune. This bit should be set to 1 to ensure reliable operation of the clock PLL lock detect flags.*/
+    uint32_t ec_ctrl = 0;
+    readBytes(EXT_SYNC_ID, EC_CTRL_OFFSET, &ec_ctrl);
+    ec_ctrl |= EC_CTRL_PLLLCK;
+    writeBytes(EXT_SYNC_ID, EC_CTRL_OFFSET, ec_ctrl);
+
+
     uint32_t sys_cfg = 0;
     readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
 
@@ -112,7 +124,10 @@ void DW1000::setMode(Mode mode)
     sys_cfg |= SYS_CFG_PHR_MODE_00; //< Standard Frame mode IEEE 802.15.4 compliant
     sys_cfg |= mode.bitrate.rxm110k;
 
+    //sys_cfg |= SYS_CFG_RXWTOE; // TODO testing purposes;
+
     writeBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
+    
 
      /**
      * Required Configuration for Transmitter on Channel 5
@@ -176,7 +191,8 @@ void DW1000::setMode(Mode mode)
         }
     }
        
-    writeBytes(DRX_CONF_ID, DRX_TUNE1a_OFFSET, (uint8_t*)&mode.prf.drx_tune1a, sizeof(uint16_t));  //< See DW1000 User Manual Page 141 Table 31 
+    writeBytes(DRX_CONF_ID, DRX_TUNE1a_OFFSET, (uint8_t*)&mode.prf.drx_tune1a, DRX_TUNE1a_LEN);  //< See DW1000 User Manual Page 141 Table 31 
+    writeBytes(DRX_CONF_ID, DRX_TUNE2_OFFSET, (uint8_t*)&mode.tune.drx_tune2, DRX_TUNE2_LEN);  //< See DW1000 User Manual Page 141 Table 31 
 
 }
 void DW1000::initialize()
@@ -520,8 +536,14 @@ void DW1000::setDataRate(uint8_t rate)
 void DW1000::clearStatusRegister()
 {
     uint8_t data[SYS_STATUS_LEN] = {0};
-    memset(data, 0xFF, SYS_STATUS_LEN);
+    memset(data, 0b1100110111011001111111111111111110, SYS_STATUS_LEN);
     writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, data, SYS_STATUS_LEN);
+
+    uint8_t test;
+    readBytes(SYS_STATUS_ID, 0x4, &test, 1);
+    logger->addBuffer("test is %x", test);
+    readBytes(SYS_STATUS_ID, 0x0, &test, 1);
+    logger->addBuffer("test is %x", test);
 }
 
 void DW1000::setClock(ClockSpeed clock){
@@ -539,7 +561,64 @@ void DW1000::setClock(ClockSpeed clock){
     delay(5);
     
 }
+void DW1000::setDiagnostic(bool enable)
+{
+    uint32_t value = 0;
+    value |= enable;
+    writeBytes(DIG_DIAG_ID, EVC_CTRL_OFFSET, value); //write all 4 bytes as stated in 7.2.48.1 Sub-Register 0x2F:00 – Event Counter Control
+}
+void DW1000::log(){
+    uint32_t reg;
 
+    reg = 0;
+    readBytes(DIG_DIAG_ID, EVC_PHE_OFFSET, (uint8_t*)&reg, EVC_PHE_LEN);
+    if(logger != nullptr) logger->addBuffer("DIG_DIAG_ID | EVC_PHE_OFFSET %x", reg);
+
+    reg = 0;
+    readBytes(DIG_DIAG_ID, EVC_RSE_OFFSET, (uint8_t*)&reg, EVC_RSE_LEN);
+    if(logger != nullptr) logger->addBuffer("DIG_DIAG_ID | EVC_RSE_OFFSET %x", reg);
+
+    reg = 0;
+    readBytes(DIG_DIAG_ID, EVC_FCG_OFFSET, (uint8_t*)&reg, EVC_FCG_LEN);
+    if(logger != nullptr) logger->addBuffer("DIG_DIAG_ID | EVC_FCG_OFFSET %x", reg);
+
+    reg = 0;
+    readBytes(DIG_DIAG_ID, EVC_FCE_OFFSET, (uint8_t*)&reg, EVC_FCE_LEN);
+    if(logger != nullptr) logger->addBuffer("DIG_DIAG_ID | EVC_FCE_OFFSET %x", reg);
+
+    reg = 0;
+    readBytes(DIG_DIAG_ID, EVC_FFR_OFFSET, (uint8_t*)&reg, EVC_FFR_LEN);
+    if(logger != nullptr) logger->addBuffer("DIG_DIAG_ID | EVC_FFR_OFFSET %x", reg);
+
+    reg = 0;
+    readBytes(DIG_DIAG_ID, EVC_OVR_OFFSET, (uint8_t*)&reg, EVC_OVR_LEN);
+    if(logger != nullptr) logger->addBuffer("DIG_DIAG_ID | EVC_OVR_OFFSET %x", reg);
+
+    reg = 0;
+    readBytes(DIG_DIAG_ID, EVC_STO_OFFSET, (uint8_t*)&reg, EVC_STO_LEN);
+    if(logger != nullptr) logger->addBuffer("DIG_DIAG_ID | EVC_STO_OFFSET %x", reg);
+
+    reg = 0;
+    readBytes(DIG_DIAG_ID, EVC_PTO_OFFSET, (uint8_t*)&reg, EVC_PTO_LEN);
+    if(logger != nullptr) logger->addBuffer("DIG_DIAG_ID | EVC_PTO_OFFSET %x", reg);
+
+    reg = 0;
+    readBytes(DIG_DIAG_ID, EVC_FWTO_OFFSET, (uint8_t*)&reg, EVC_FWTO_LEN);
+    if(logger != nullptr) logger->addBuffer("DIG_DIAG_ID | EVC_FWTO_OFFSET %x", reg);
+
+    reg = 0;
+    readBytes(DIG_DIAG_ID, EVC_TXFS_OFFSET, (uint8_t*)&reg, EVC_TXFS_LEN);
+    if(logger != nullptr) logger->addBuffer("DIG_DIAG_ID | EVC_TXFS_OFFSET %x", reg);
+
+    reg = 0;
+    readBytes(DIG_DIAG_ID, EVC_HPW_OFFSET, (uint8_t*)&reg, EVC_HPW_LEN);
+    if(logger != nullptr) logger->addBuffer("DIG_DIAG_ID | EVC_HPW_OFFSET %x", reg);
+
+    reg = 0;
+    readBytes(DIG_DIAG_ID, EVC_TPW_OFFSET, (uint8_t*)&reg, EVC_TPW_LEN);
+    if(logger != nullptr) logger->addBuffer("DIG_DIAG_ID | EVC_TPW_OFFSET %x", reg);
+
+}
 void DW1000::forceIdle() {
     uint32_t sys_ctrl = SYS_CTRL_TRXOFF;
 
@@ -571,7 +650,25 @@ void DW1000::readReceivedData(uint8_t** data, uint16_t* length)
     uint32_t sys_mask = 0;
     readBytes(SYS_MASK_ID, NO_SUB_ADDRESS, &sys_mask);
     if(logger!=nullptr) logger->addBuffer("sys_mask is currently! %x", sys_mask);
-    
+
+
+    uint32_t sys_cfg = 0;
+    readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, &sys_cfg);
+    if(logger!=nullptr) logger->addBuffer("sys_cfg is currently! %x", sys_cfg);
+
+    uint32_t log = 0;
+    readBytes(DRX_CONF_ID, DRX_TUNE2_OFFSET, &log);
+    if(logger!=nullptr) logger->addBuffer("DRX_CONF_ID DRX_TUNE2_OFFSET is currently! %x", log);
+
+    readBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, &log);
+    if(logger!=nullptr) logger->addBuffer("SYS_CTRL_ID is currently! %x", log);
+
+    log = 0;
+    readBytes(RX_FWTO_ID, NO_SUB_ADDRESS, &log);
+    if(logger!=nullptr) logger->addBuffer("RX_FWTO_ID is currently! %x", log);
+
+    //log = 0xFFF;
+    //writeBytes(RX_FWTO_ID, NO_SUB_ADDRESS, log);
 
 
     Serial.println(len);

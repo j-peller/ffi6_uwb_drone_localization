@@ -43,6 +43,10 @@ struct Bitrate {
     uint32_t rxm110k; //RXM110K
 };
 
+struct Tune {
+    uint32_t drx_tune2;
+};
+
 enum SFD {
     STD,
     DecaWave,
@@ -63,6 +67,8 @@ extern Channel channel4;
 extern Channel channel5;
 extern Channel channel7;
 
+extern Tune tuneTest;
+
 struct Mode {
     Channel channel;
     PRF prf;
@@ -70,6 +76,7 @@ struct Mode {
     uint32_t preamble_code;
     uint32_t preamble_length;
     SFD sfd;
+    Tune tune;
 };
 
 
@@ -147,6 +154,8 @@ class DW1000 {
         void deleteReceivedDataLength();
         void addCustomInterruptHandler(InterruptTable interruptTable, std::function<void(uint32_t)> callback);
         void removeCustomInterruptHandler();
+        void setDiagnostic(bool enable);
+        void log();
 
 
         /*  Responsible for loading Leading Edge Detection microcode from ROM to RAM as described in 7.2.46.3 LDELOAD

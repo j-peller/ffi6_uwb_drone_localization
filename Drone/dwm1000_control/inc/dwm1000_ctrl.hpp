@@ -170,6 +170,7 @@ public:
     /* Setters */
     void set_device_short_addr(uint16_t short_addr);
     void set_device_pan_id(uint16_t pan_id);
+    void set_antenna_delay(uint16_t delay);
 
     /* Getters */
     void get_device_id(uint32_t* device_id);

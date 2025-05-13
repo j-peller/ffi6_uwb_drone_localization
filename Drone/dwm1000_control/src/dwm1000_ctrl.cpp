@@ -624,6 +624,15 @@ void DWMController::set_device_pan_id(uint16_t pan_id)
 
 
 /**
+ * 
+ */
+void DWMController::set_antenna_delay(uint16_t delay)
+{
+    writeBytes(TX_ANTD_ID, NO_SUB_ADDRESS, (uint8_t*)&delay, sizeof(uint16_t));
+}
+
+
+/**
  * @brief Get the device ID of the DWM1000 -- Read from the DEV_ID register = 0x00
  * @param device_id Pointer to store the device ID
  * 

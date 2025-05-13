@@ -37,6 +37,8 @@ public:
     /* Ranging */
     dwm_com_error_t get_distances_to_anchors(distances* distances);
     dwm_com_error_t get_distance_to_anchor(uint16_t anchor_addr, double* distance);
+    
+    dwm_com_error_t calibrate_antenna_delay(double known_distance_m, double allowed_error_m, int max_iterations);
 
 private:
     DWMRanging();

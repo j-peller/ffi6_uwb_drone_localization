@@ -3,6 +3,7 @@
 #include "../../../shared/inc/helpers.hpp"
 #include "../inc/dw1000_time.hpp"
 #include <linux/spi/spidev.h>
+#include <math.h>
 
 /**
  * 
@@ -485,3 +486,58 @@ dwm_com_error_t DWMRanging::get_distance_to_anchor(uint16_t anchor_addr, double*
     return ret;
 }
 
+
+/**
+ * 
+ */
+dwm_com_error_t DWMRanging::calibrate_antenna_delay(double known_distance_m, double allowed_error_m, int max_iterations)
+{
+    double tx_antd = 16384.0f; // Initial guess for TX antenna delay
+    double current_distance_m = 0.0f;
+    double sum_distance_m = 0.0f;
+
+    for (int i = 0; i < max_iterations; i++) {
+        /* Get the current antenna delay */
+        _controller->set_antenna_delay((uint16_t)tx_antd);
+
+        /* Perform ranging with new antenna delay */
+        get_distance_to_anchor(ANCHOR_1, &current_distance_m);
+        double error_m = current_distance_m - known_distance_m;
+
+        if (fabs(error_m) <= allowed_error_m) {
+            printf("Converged at iteration %d: Delay = %.2f (Measured: %.4f m, Error: %.4f m)\n",
+                   i + 1, tx_antd, current_distance_m, error_m);
+            return SUCCESS;
+            
+            //for (int j = 0; j < 10; j++) {
+            //    get_distance_to_anchor(ANCHOR_1, &current_distance_m);
+            //    sum_distance_m += current_distance_m;
+            //}
+
+            //if (fabs(sum_distance_m / 10.0 - known_distance_m) <= allowed_error_m) {
+            //    printf("Final average distance: %.4f m\n", sum_distance_m / 10.0);
+            //    return SUCCESS;
+            //} else {
+            //    printf("Final average distance error: %.4f m\n", fabs(sum_distance_m / 10.0 - known_distance_m));
+            //}
+        }
+
+
+        /* convert range error to time error */
+        double time_error_us = (error_m / DW1000Time::SPEED_OF_LIGHT_M_US); // Convert to microseconds
+        double delay_units = time_error_us * DW1000Time::DW1000_TIME_UNITS_PER_US;
+
+        tx_antd += delay_units;
+
+        /* */
+        if (tx_antd < 0) tx_antd = 0;
+        else if (tx_antd > 0xFFFF)tx_antd = 0xFFFF;
+        
+        printf("Iteration %d: Delay = %.2f units, Measured = %.4f m, Error = %.4f m, Correction = %.2f units\n",
+               i + 1, tx_antd, current_distance_m, error_m, delay_units);
+    }
+
+    printf("Calibration failed to converge after %d iterations.\n", max_iterations);
+
+    return ERROR;
+}

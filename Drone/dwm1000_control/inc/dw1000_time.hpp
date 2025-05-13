@@ -51,12 +51,14 @@ public:
 private:
     int64_t _timeStamp;  /* 40-bit time stamp */
 
-protected:
+public:
     /* Time resolution in microseconds. Calculated as 1 / (128 * 499.2) */
-    static constexpr double TIME_RESOLUTION_US   =  0.000015650040064103f;
-    static constexpr double SPEED_OF_LIGHT_M_US  =  299.792458f;
-    static constexpr double DISTANCE_PER_US_M    =  (SPEED_OF_LIGHT_M_US * TIME_RESOLUTION_US);
+    static constexpr double TIME_RESOLUTION_US          =  0.000015650040064103f;
+    static constexpr double DW1000_TIME_UNITS_PER_US    =  1 / TIME_RESOLUTION_US;
+    static constexpr double SPEED_OF_LIGHT_M_US         =  299.792458f;
+    static constexpr double DISTANCE_PER_US_M           =  (SPEED_OF_LIGHT_M_US * TIME_RESOLUTION_US);
 
+protected:
     /* DW1000 Timer has a resolution of 40bits */
     static const uint8_t LENGTH_TIMESTAMP   = 5;
     static const uint64_t TIMER_MAX         = 0xffffffffff;

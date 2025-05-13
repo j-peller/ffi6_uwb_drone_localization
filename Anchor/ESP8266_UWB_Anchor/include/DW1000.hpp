@@ -3,8 +3,10 @@
 #include "Mode.hpp"
 #include <Arduino.h>
 #include <SPI.h>
+
+#include "logger.hpp"
 #include "../extern/uwb-dw1000/hw/drivers/uwb/uwb_dw1000/include/dw1000/dw1000_regs.h"
-#include <logger.hpp>
+#include "dw1000_modes.h"
 /**
  * @brief SPI command structure for the DWM1000
  */
@@ -23,52 +25,6 @@ struct ClockSpeed {
     static const ClockSpeed automatic;
     static const ClockSpeed slow;
     static const ClockSpeed fast;
-};
-
-struct Channel {
-    uint8_t rf_rxctrlh; /* see Table 37 for 0x28:0B– RF_RXCTRLH*/
-    uint32_t rf_txctrl; //TODO Len is 3 in manual?
-    uint8_t tc_pgdelay;
-    uint32_t fs_pllcfg; //TODO Len is 5 in FS_PLLCFG_LEN?
-};
-
-struct PRF {
-    uint32_t txprf;
-    uint32_t rxfprf;
-    uint16_t drx_tune1a;
-};
-struct Bitrate {
-    uint32_t txbr;
-    uint32_t rxm110k; //RXM110K
-};
-
-enum SFD {
-    STD,
-    DecaWave,
-};
-
-extern Bitrate bitrate_110k;
-extern Bitrate bitrate_850k;
-extern Bitrate bitrate_6M;
-
-extern PRF prf64;
-extern PRF prf16;
-extern PRF prf4;
-
-extern Channel channel1;
-extern Channel channel2;
-extern Channel channel3;
-extern Channel channel4;
-extern Channel channel5;
-extern Channel channel7;
-
-struct Mode {
-    Channel channel;
-    PRF prf;
-    Bitrate bitrate;
-    uint32_t preamble_code;
-    uint32_t preamble_length;
-    SFD sfd;
 };
 
 
@@ -129,8 +85,8 @@ class DW1000 {
         void writeNetworkIdAndDeviceAddress(uint8_t* data);
         void setDataRate(uint8_t rate);
         void transmit(uint8_t data[], uint16_t length);
-        void setMode(Mode mode);
-        void setDeviceID(uint16_t id);
+        void setMode(dw1000_mode_t mode);
+        void setDeviceAddress(uint16_t id);
         void setPANAdress(uint16_t address);
         void startReceiving();
         void setReceiverAutoReenable(boolean val);

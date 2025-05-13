@@ -14,78 +14,7 @@ const ClockSpeed ClockSpeed::fast = {
     .pmsc0_clock = PMSC_CTRL0_SYSCLKS_125M,
     .spiSettings = SPISettings(20000000L, MSBFIRST, SPI_MODE0),
 };
-Bitrate bitrate_110k {
-    .txbr = TX_FCTRL_TXBR_110k,
-    .rxm110k = SYS_CFG_RXM110K,
-};
-Bitrate bitrate_850k {
-    .txbr = TX_FCTRL_TXBR_850k,
-    .rxm110k = 0,
-};
-Bitrate bitrate_6M {
-    .txbr = TX_FCTRL_TXBR_6M,
-    .rxm110k = 0,
-};
 
-PRF prf64 {
-    .txprf = TX_FCTRL_TXPRF_64M,
-    .rxfprf = CHAN_CTRL_RXFPRF_64,
-    .drx_tune1a = DRX_TUNE1a_PRF64,
-};
-
-PRF prf16 {
-    .txprf = TX_FCTRL_TXPRF_16M,
-    .rxfprf = CHAN_CTRL_RXFPRF_16,
-    .drx_tune1a = DRX_TUNE1a_PRF16,
-};
-
-PRF prf4 {
-    .txprf = TX_FCTRL_TXPRF_4M,
-    .rxfprf = CHAN_CTRL_RXFPRF_4,
-    .drx_tune1a = 0,
-};
-
-Channel channel1 = {
-    .rf_rxctrlh = RF_RXCTRLH_NBW,
-    .rf_txctrl = RF_TXCTRL_CH1,
-    .tc_pgdelay = TC_PGDELAY_CH1,
-    .fs_pllcfg = FS_PLLCFG_CH1,
-};
-
-Channel channel2 = {
-    .rf_rxctrlh = RF_RXCTRLH_NBW,
-    .rf_txctrl = RF_TXCTRL_CH2,
-    .tc_pgdelay = TC_PGDELAY_CH2,
-    .fs_pllcfg = FS_PLLCFG_CH2,
-};
-
-Channel channel3 = {
-    .rf_rxctrlh = RF_RXCTRLH_NBW,
-    .rf_txctrl = RF_TXCTRL_CH3,
-    .tc_pgdelay = TC_PGDELAY_CH3,
-    .fs_pllcfg = FS_PLLCFG_CH3,
-};
-
-Channel channel4 = {
-    .rf_rxctrlh = RF_RXCTRLH_WBW,
-    .rf_txctrl = RF_TXCTRL_CH4,
-    .tc_pgdelay = TC_PGDELAY_CH4,
-    .fs_pllcfg = FS_PLLCFG_CH4,
-};
-
-Channel channel5 = {
-    .rf_rxctrlh = RF_RXCTRLH_NBW,
-    .rf_txctrl = RF_TXCTRL_CH5,
-    .tc_pgdelay = TC_PGDELAY_CH5,
-    .fs_pllcfg = FS_PLLCFG_CH5,
-};
-
-Channel channel7 = {
-    .rf_rxctrlh = RF_RXCTRLH_WBW,
-    .rf_txctrl = RF_TXCTRL_CH7,
-    .tc_pgdelay = TC_PGDELAY_CH7,
-    .fs_pllcfg = FS_PLLCFG_CH7,
-};
 
 static void IRAM_ATTR dw1000_interrupt_handler(void* arg) {
     DW1000* instance = static_cast<DW1000*>(arg);
@@ -101,15 +30,17 @@ void DW1000::setReceiverAutoReenable(boolean val)
     writeBytes(SYS_CFG_ID, NO_SUB_ADDRESS, data);
 }
 
-void DW1000::setMode(Mode mode)
+void DW1000::setMode(dw1000_mode_t mode)
 {
     uint32_t sys_cfg = 0;
     readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
 
     //sys_cfg |= SYS_CFG_FFE;         //< Enable Frame Filtering. This requires SHORT_ADDR to be set beforehand.
-    sys_cfg |= SYS_CFG_FFAD;        //< Allow Data Frame
+    //sys_cfg |= SYS_CFG_FFAD;        //< Allow Data Frame
+    sys_cfg &= ~SYS_CFG_FFE;
+    sys_cfg &= ~SYS_CFG_FFAD;
     sys_cfg |= SYS_CFG_PHR_MODE_00; //< Standard Frame mode IEEE 802.15.4 compliant
-    sys_cfg |= mode.bitrate.rxm110k;
+    sys_cfg |= mode.bitrate_config.rxm110k;
 
     writeBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
 
@@ -117,27 +48,26 @@ void DW1000::setMode(Mode mode)
      * Required Configuration for Transmitter on Channel 5
      */
 
-    uint32_t rf_txctrl_val = mode.channel.rf_txctrl;     //< See DW1000 User Manual Page 148 Table 38
+    uint32_t rf_txctrl_val = mode.channel_config.rf_txctrl;     //< See DW1000 User Manual Page 148 Table 38
     writeBytes(RF_CONF_ID, RF_TXCTRL_OFFSET, rf_txctrl_val);
 
-    uint8_t tc_pgdelay_val = mode.channel.tc_pgdelay;    //< See DW1000 User Manual Page 155 Table 40 
+    uint8_t tc_pgdelay_val = mode.channel_config.tc_pgdelay;    //< See DW1000 User Manual Page 155 Table 40 
     writeBytes(TX_CAL_ID, TC_PGDELAY_OFFSET, &tc_pgdelay_val, sizeof(uint8_t));
 
-    uint32_t fs_pllcfg_val = mode.channel.fs_pllcfg;     //< See DW1000 User Manual Page 157 Table 43
+    uint32_t fs_pllcfg_val = mode.channel_config.fs_pllcfg;     //< See DW1000 User Manual Page 157 Table 43
     writeBytes(FS_CTRL_ID, FS_PLLCFG_OFFSET, fs_pllcfg_val);
 
     uint8_t tx_fctrl[TX_FCTRL_LEN] = {0};
     readBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, tx_fctrl, TX_FCTRL_LEN);
 
     *(uint64_t *) tx_fctrl &= ~TX_FCTRL_TXBR_MASK; //< Clear current setting
-    *(uint64_t *) tx_fctrl |= mode.bitrate.txbr;
+    *(uint64_t *) tx_fctrl |= mode.bitrate_config.txbr;
 
     *(uint64_t *) tx_fctrl &= ~TX_FCTRL_TXPRF_MASK;
-    *(uint64_t *) tx_fctrl |= mode.prf.txprf;
+    *(uint64_t *) tx_fctrl |= mode.prf_config.txprf;
 
     *(uint64_t *) tx_fctrl &= ~TX_FCTRL_TXPSR_MASK;
     *(uint64_t *) tx_fctrl &= ~TX_FCTRL_TXPSR_PE_MASK;
-
     *(uint64_t *) tx_fctrl |= mode.preamble_length;
 
     writeBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, tx_fctrl, TX_FCTRL_LEN);
@@ -145,7 +75,7 @@ void DW1000::setMode(Mode mode)
      /**
      * Required Configuration for Receiver on Channel 5
      */
-    uint8_t rf_rxctrlh_val = mode.channel.rf_rxctrlh; //< See DW1000 User Manual Page 148 Table 37
+    uint8_t rf_rxctrlh_val = mode.channel_config.rf_rxctrlh; //< See DW1000 User Manual Page 148 Table 37
     writeBytes(RF_CONF_ID, RF_RXCTRLH_OFFSET, &rf_rxctrlh_val, sizeof(uint8_t));
 
 
@@ -153,15 +83,20 @@ void DW1000::setMode(Mode mode)
     uint8_t chan_ctrl[CHAN_CTRL_LEN] = {0};
     readBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, chan_ctrl, CHAN_CTRL_LEN);
 
+    *(uint32_t *) chan_ctrl &= ~CHAN_CTRL_TX_CHAN_MASK;           //< Clear current TX Channel
+    *(uint32_t *) chan_ctrl |= (mode.channel_num << CHAN_CTRL_TX_CHAN_SHIFT);  //< Set TX Channel to 5
+
+    *(uint32_t *) chan_ctrl &= ~CHAN_CTRL_RX_CHAN_MASK;           //< Clear current RX Channel
+    *(uint32_t *) chan_ctrl |= (mode.channel_num << CHAN_CTRL_RX_CHAN_SHIFT);  //< Set RX Channel to 5
+
     *(uint32_t *) chan_ctrl &= ~CHAN_CTRL_RXFPRF_MASK;            //< Clear current RX PRF
-    *(uint32_t *) chan_ctrl |= mode.prf.rxfprf;               //< Set RX PRF to 64 MHz to match Transmitter
+    *(uint32_t *) chan_ctrl |= mode.prf_config.rxfprf;               //< Set RX PRF to 64 MHz to match Transmitter
 
     *(uint32_t *) chan_ctrl &= ~CHAN_CTRL_TX_PCOD_MASK;           //< Clear current Preamble Code for Transceiver
     *(uint32_t *) chan_ctrl |= (mode.preamble_code) << CHAN_CTRL_TX_PCOD_SHIFT;  //< Set Preamble Code 9. Supported according to page 214 table 61
 
     *(uint32_t *) chan_ctrl &= ~CHAN_CTRL_RX_PCOD_MASK;           //< Clear current Preamble Code for Receiver
     *(uint32_t *) chan_ctrl |= (mode.preamble_code) << CHAN_CTRL_RX_PCOD_SHIFT;  //< Set Preamble Code 9. Supported according to page 214 table 61
-    writeBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, chan_ctrl, CHAN_CTRL_LEN);
 
     switch(mode.sfd){
         case SFD::STD:
@@ -171,11 +106,56 @@ void DW1000::setMode(Mode mode)
         }
         case SFD::DecaWave:
         {
+            // 110 k mode
+            *(uint32_t *) chan_ctrl |= CHAN_CTRL_DWSFD;
+            *(uint32_t *) chan_ctrl &= ~(CHAN_CTRL_TNSSFD | CHAN_CTRL_RNSSFD);
+            // When using 110k mode, the SFD length is always 64Bytes 
+
+
+            // 850 mode
+            //*(uint32_t *) chan_ctrl |= (CHAN_CTRL_DWSFD | CHAN_CTRL_TNSSFD | CHAN_CTRL_RNSSFD);
+            //uint8_t sfd_len = DW_NS_SFD_LEN_850K; //< 10 Bytes
+            //writeBytes(USR_SFD_ID, NO_SUB_ADDRESS, &sfd_len, sizeof(uint8_t));
             break;
         }
     }
-       
-    writeBytes(DRX_CONF_ID, DRX_TUNE1a_OFFSET, (uint8_t*)&mode.prf.drx_tune1a, sizeof(uint16_t));  //< See DW1000 User Manual Page 141 Table 31 
+    
+    writeBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, chan_ctrl, CHAN_CTRL_LEN);
+
+    /**
+     * Default configurations that should be modified according to Section 2.5.5 page 17 
+     */
+    writeBytes(DRX_CONF_ID, DRX_TUNE0b_OFFSET, (uint8_t*)&mode.tune_config.drx_tune0b, sizeof(uint16_t));
+    writeBytes(DRX_CONF_ID, DRX_TUNE1a_OFFSET, (uint8_t*)&mode.tune_config.drx_tune1a, sizeof(uint16_t));
+    writeBytes(DRX_CONF_ID, DRX_TUNE1b_OFFSET, (uint8_t*)&mode.tune_config.drx_tune1b, sizeof(uint16_t));
+    writeBytes(DRX_CONF_ID, DRX_TUNE2_OFFSET, (uint8_t*)&mode.tune_config.drx_tune2, sizeof(uint32_t));
+    writeBytes(AGC_CTRL_ID, AGC_TUNE1_OFFSET, (uint8_t*)&mode.fixed_config.agc_tune1, sizeof(uint16_t));
+    writeBytes(AGC_CTRL_ID, AGC_TUNE2_OFFSET, (uint8_t*)&mode.fixed_config.agc_tune2, sizeof(uint32_t));
+
+    uint8_t lde_cfg1 = 0;
+    readBytes(LDE_IF_ID, LDE_CFG1_OFFSET, (uint8_t*)&lde_cfg1, sizeof(uint8_t));
+    lde_cfg1 &= ~LDE_CFG1_NSTDEV_MASK;  //< Clear current setting which is set to 0x0C
+    lde_cfg1 |= 0x0D;                   //< Set 0x0D as described in Section 2.5.5.4 for better performance
+    writeBytes(LDE_IF_ID, LDE_CFG1_OFFSET, (uint8_t*)&lde_cfg1, sizeof(uint8_t));
+
+    uint16_t lde_cfg2 = 0x1607;     //< See DW1000 User Manual Page 177 Table 50
+    writeBytes(LDE_IF_ID, LDE_CFG2_OFFSET, (uint8_t*)&lde_cfg2, sizeof(uint16_t));
+
+    uint16_t lde_repc = LDE_REPC_PCODE_4 >> 3; //< See Page 178 
+    writeBytes(LDE_IF_ID, LDE_REPC_OFFSET, (uint8_t*)&lde_repc, sizeof(uint16_t));
+
+    uint32_t tx_power_val = 0x0E082848; //< See DW1000 User Manual Section 2.5.5.6 
+    writeBytes(TX_POWER_ID, NO_SUB_ADDRESS, (uint8_t*)&tx_power_val, sizeof(uint32_t));
+
+    writeBytes(FS_CTRL_ID, FS_PLLTUNE_OFFSET, (uint8_t*)&mode.tune_config.fs_plltune, sizeof(uint8_t));
+
+    /* Procedure to load LDE Coad into ROM */
+    //loadLDECode();
+
+    /* Load LDOTUNE_CAL value from OTP into LDOTUNE Register as described in Section 2.5.5.11 page 18*/
+    uint64_t ldotune_cal_val = 0;
+   // readBytesOTP(0x0004, (uint8_t*)&ldotune_cal_val, sizeof(uint64_t)); TODO
+    writeBytes(RF_CONF_ID, 0x30, (uint8_t*)&ldotune_cal_val, 5);
 
 }
 void DW1000::initialize()
@@ -446,7 +426,7 @@ void DW1000::writeNetworkIdAndDeviceAddress(uint8_t* data)
 {
     writeBytes(PANADR_ID, NO_SUB_ADDRESS, data, PANADR_LEN);
 }
-void DW1000::setDeviceID(uint16_t id)
+void DW1000::setDeviceAddress(uint16_t id)
 {
     writeBytes(PANADR_ID, NO_SUB_ADDRESS, (uint8_t*) &id, 2);
 }

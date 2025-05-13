@@ -14,26 +14,9 @@ DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType
     uint16_t device_id = 0;
     InterruptTable interrupts = (InterruptTable) 0;
 
-    Mode test_mode {
-        .channel = channel5,
-        .prf = prf64,
-        .bitrate = bitrate_850k,
-        .preamble_code = 0x09,
-        .preamble_length = TX_FCTRL_TXPSR_PE_1024,
-        .sfd = SFD::STD,
-    };
-
-    Mode thotro110 {
-        .channel = channel5,
-        .prf = prf16,
-        .bitrate = bitrate_110k,
-        .preamble_code = 0x04,
-        .preamble_length = TX_FCTRL_TXPSR_PE_2048,
-        .sfd = SFD::STD,
-    };
     
     dw1000.loadLDECode();
-    dw1000.setPANAdress(pan);
+    
 
     switch (this->deviceType)
     {
@@ -49,11 +32,16 @@ DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType
         default:
             break;
     }
-    dw1000.setDeviceID(device_id);
+
+
     dw1000.enableInterrupts(interrupts);
    
-    dw1000.setMode(thotro110);
+    dw1000.setMode(THOTRO110);
 
+    dw1000.setPANAdress(pan);
+    delay(100);
+    dw1000.setDeviceAddress(device_id);
+    delay(100);
     uint32_t read = 0;
     dw1000.readBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, &read);
     dw1000.logger->addBuffer("chan_trl %x", read);
@@ -78,7 +66,7 @@ void DW1000Ranging::loop()
 
     uint8_t* message = nullptr;
     uint16_t length = 0;
-    dw1000.readReceivedData(&message, &length);
+    //dw1000.readReceivedData(&message, &length);
 
     if(message!=nullptr)
     {

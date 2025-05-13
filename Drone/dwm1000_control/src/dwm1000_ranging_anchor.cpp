@@ -50,8 +50,8 @@ dwm_com_error_t DWMRangingAnchor::do_init_state()
         ret = _controller->poll_rx_status();
         if (ret == TIMEOUT)
         {
-            continue; //< we dont care for timeout in init state
-            //return ret;
+            //continue; //< we dont care for timeout in init state
+            return ret;
         } else if (ret == ERROR) {
             //waitOutError();
             return ret;

@@ -49,6 +49,10 @@ DWMRanging* DWMRanging::create_instance(DWMController* controller)
         fprintf(stdout, "Setting mode to THOTRO110\n");
         controller->set_mode(THOTRO110);
         break;
+    case dw1000_mode_enum_t::JOPEL2:
+        fprintf(stdout, "Setting mode to JOPEL850\n");
+        controller->set_mode(JOPEL850);
+        break;
     }
 
     controller->setIRQMask(SYS_MASK_MRXDFR | SYS_MASK_MTXFRS);

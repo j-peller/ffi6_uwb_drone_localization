@@ -260,10 +260,16 @@ dwm_com_error_t DWMController::set_mode(dw1000_mode_t mode)
         }
         case SFD::DecaWave:
         {
+            // 110 k mode
             *(uint32_t *) chan_ctrl |= CHAN_CTRL_DWSFD;
             *(uint32_t *) chan_ctrl &= ~(CHAN_CTRL_TNSSFD | CHAN_CTRL_RNSSFD);
-
             // When using 110k mode, the SFD length is always 64Bytes 
+
+
+            // 850 mode
+            //*(uint32_t *) chan_ctrl |= (CHAN_CTRL_DWSFD | CHAN_CTRL_TNSSFD | CHAN_CTRL_RNSSFD);
+            //uint8_t sfd_len = DW_NS_SFD_LEN_850K; //< 10 Bytes
+            //writeBytes(USR_SFD_ID, NO_SUB_ADDRESS, &sfd_len, sizeof(uint8_t));
             break;
         }
     }
@@ -489,7 +495,7 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t ti
     uint32_t sys_status = 0;
     struct gpiod_line_event event;
     dwm_com_error_t ret = SUCCESS;
-    timespec start, now;
+    timespec timeout_ts = {.tv_sec = timeout / 1000000000, .tv_nsec = timeout % 1000000000};
     int gpio_ret;
 
     /**
@@ -498,68 +504,51 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t ti
      */
     //setIRQMask(status_mask);
 
-    clock_gettime(CLOCK_MONOTONIC_RAW,  &start);
+    /* wait for event on irq pin */
+    gpio_ret = gpiod_line_event_wait(_irq_line, &timeout_ts);
+    if (gpio_ret > 0) {
 
-    while (true) {
-
-        clock_gettime(CLOCK_MONOTONIC_RAW, &now);
-
-        /* */
-        uint64_t elapsed = timespec_delta_nanoseconds(&now, &start);
-        if (elapsed >= timeout)
-            return TIMEOUT;
-
-        /* timeout to poll for interrupt edge event */
-        timespec remaining_ts {
-            .tv_sec = (time_t)((timeout - elapsed) / 1000000000),
-            .tv_nsec = (long)((timeout - elapsed) % 1000000000)
-        };
-
-        /* wait for event on irq pin */
-        gpio_ret = gpiod_line_event_wait(_irq_line, &remaining_ts);
-        if (gpio_ret > 0) {
-
-            /* Read the event type */
-            if (gpiod_line_event_read(_irq_line, &event) < 0) {
-                fprintf(stderr, "GPIO Read failed\n");
-                return ERROR;
-            }
-
-            /* is it our desired rising edge event? */
-            if (event.event_type == GPIOD_LINE_EVENT_RISING_EDGE) {
-
-                /* we are only interested in the first 32bits... */
-                readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &sys_status);
-        
-                /* check status */
-                if ((sys_status & status_mask) == status_mask) {
-                    _last_sys_status = sys_status;
-                    fprintf(stdout, "Gotcha! %04X\n", status_mask);
-                    clearStatusEvent(status_mask);
-                }
-                
-                /* Drain remaining events without status checks */
-                if (gpiod_line_event_wait(_irq_line, &remaining_ts) > 0) {
-                    //fprintf(stdout, "Draining remaining events\n");
-                    while(gpiod_line_event_read(_irq_line, &event) > 0) {
-                    }
-                }
-                    
-                return SUCCESS;
-            }
-
-
-        }
-        else if (gpio_ret == 0) {
-            //readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &sys_status);
-            fprintf(stderr, "No Events Available, Timeout\n", sys_status);
-            /* if we dont do this, we get stuck after some time because interrupts dont get cleared */
-            //clearStatusEvent(status_mask);
-        } 
-        else {
-            fprintf(stderr, "Some error? Ready: %d\n", gpio_ret);
+        /* Read the event type */
+        if (gpiod_line_event_read(_irq_line, &event) < 0) {
+            fprintf(stderr, "GPIO Read failed\n");
             return ERROR;
         }
+
+        /* is it our desired rising edge event? */
+        if (event.event_type == GPIOD_LINE_EVENT_RISING_EDGE) {
+
+            /* we are only interested in the first 32bits... */
+            readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &sys_status);
+        
+            /* check status */
+            if ((sys_status & status_mask) == status_mask) {
+                _last_sys_status = sys_status;
+                fprintf(stdout, "Gotcha! %04X\n", status_mask);
+                clearStatusEvent(status_mask);
+            }
+                
+            /* Drain remaining events without status checks */
+            //if (gpiod_line_event_wait(_irq_line, &remaining_ts) > 0) {
+                //fprintf(stdout, "Draining remaining events\n");
+                //while(gpiod_line_event_read(_irq_line, &event) > 0) {
+                //}
+            //}
+                    
+            return SUCCESS;
+        }
+
+
+    }
+    else if (gpio_ret == 0) {
+        //readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &sys_status);
+        fprintf(stderr, "No Events Available, Timeout\n", sys_status);
+        return TIMEOUT;
+        /* if we dont do this, we get stuck after some time because interrupts dont get cleared */
+        //clearStatusEvent(status_mask);
+    } 
+    else {
+        fprintf(stderr, "Some error? Ready: %d\n", gpio_ret);
+        return ERROR;
     }
 
     return ret;

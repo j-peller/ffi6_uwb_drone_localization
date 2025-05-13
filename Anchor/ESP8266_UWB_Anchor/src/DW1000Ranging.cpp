@@ -5,19 +5,16 @@ DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType
     this->deviceType = deviceType;
     this->dw1000 = dw1000;
     delay(1000);
-    //dw1000.soft_reset();
+    dw1000.soft_reset();
     delay(1000);
     dw1000.initialize();
     
 
-    uint16_t pan = 0xAFFE;
+    uint16_t pan = 0xDECA;
     uint16_t device_id = 0;
     InterruptTable interrupts = (InterruptTable) 0;
 
     
-    dw1000.loadLDECode();
-    
-
     switch (this->deviceType)
     {
         case TAG:
@@ -25,9 +22,8 @@ DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType
             interrupts |= InterruptTable::INTERRUPT_ALL;
             break;
         case ANCHOR:
-            device_id = 0xBBBB;
-            interrupts |= InterruptTable::INTERRUPT_ALL;
-            dw1000.setReceiverAutoReenable(true);
+            device_id = 0xAFFE;
+            interrupts |= (InterruptTable) SYS_MASK_MRXDFR;
             break;
         default:
             break;
@@ -36,7 +32,7 @@ DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType
 
     dw1000.enableInterrupts(interrupts);
    
-    dw1000.setMode(THOTRO110);
+    dw1000.setMode(JOPEL110);
 
     dw1000.setPANAdress(pan);
     delay(100);
@@ -64,6 +60,14 @@ void DW1000Ranging::loop()
     dw1000.readBytes(PANADR_ID, NO_SUB_ADDRESS, &read);
     dw1000.logger->addBuffer("panaddr %x", read);
 
+    read = 0;
+    dw1000.readBytes(SYS_MASK_ID, NO_SUB_ADDRESS, &read);
+    dw1000.logger->addBuffer("sys_mask %x", read);
+    
+    read = 0;
+    dw1000.readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &read);
+    dw1000.logger->addBuffer("sys_status %x", read);
+
     uint8_t* message = nullptr;
     uint16_t length = 0;
     //dw1000.readReceivedData(&message, &length);
@@ -87,6 +91,7 @@ void DW1000Ranging::loop()
             break;
         case ANCHOR:
             dw1000.startReceiving();
+            dw1000.setReceiverAutoReenable(true);
             break;
     }
 }

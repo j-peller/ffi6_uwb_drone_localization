@@ -5,7 +5,7 @@
 #include "DW1000.hpp"
 #include "DW1000Ranging.hpp"
 
-DeviceType deviceType = TAG;
+DeviceType deviceType = ANCHOR;
 
 WifiHandler wifiHandler;
 Logger logger(&wifiHandler);

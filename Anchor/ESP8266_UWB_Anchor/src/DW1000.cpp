@@ -4,16 +4,22 @@
 
 const ClockSpeed ClockSpeed::automatic = {
     .pmsc0_clock = PMSC_CTRL0_SYSCLKS_AUTO,
-    .spiSettings = SPISettings(20000000L, MSBFIRST, SPI_MODE0),
+    .spiSettings = &DW1000::_fastSPI,
 };
 const ClockSpeed ClockSpeed::slow = {
     .pmsc0_clock = PMSC_CTRL0_SYSCLKS_19M,
-    .spiSettings = SPISettings(2000000L, MSBFIRST, SPI_MODE0),
+    .spiSettings = &DW1000::_slowSPI,
 };
 const ClockSpeed ClockSpeed::fast = {
     .pmsc0_clock = PMSC_CTRL0_SYSCLKS_125M,
-    .spiSettings = SPISettings(20000000L, MSBFIRST, SPI_MODE0),
+    .spiSettings = &DW1000::_fastSPI,
 };
+
+/* SPI */
+const SPISettings DW1000::_fastSPI = SPISettings(20000000L, MSBFIRST, SPI_MODE0);
+const SPISettings DW1000::_slowSPI = SPISettings(2000000L, MSBFIRST, SPI_MODE0);
+const SPISettings* DW1000::spiSettings = &DW1000::_fastSPI;
+
 
 
 static void IRAM_ATTR dw1000_interrupt_handler(void* arg) {
@@ -150,12 +156,17 @@ void DW1000::setMode(dw1000_mode_t mode)
     writeBytes(FS_CTRL_ID, FS_PLLTUNE_OFFSET, (uint8_t*)&mode.tune_config.fs_plltune, sizeof(uint8_t));
 
     /* Procedure to load LDE Coad into ROM */
-    //loadLDECode();
+    this->setClock(ClockSpeed::slow);
+    loadLDECode();
 
     /* Load LDOTUNE_CAL value from OTP into LDOTUNE Register as described in Section 2.5.5.11 page 18*/
-    uint64_t ldotune_cal_val = 0;
-   // readBytesOTP(0x0004, (uint8_t*)&ldotune_cal_val, sizeof(uint64_t)); TODO
-    writeBytes(RF_CONF_ID, 0x30, (uint8_t*)&ldotune_cal_val, 5);
+    //uint64_t ldotune_cal_val = 0;
+    //readBytesOTP(0x0004, (uint8_t*)&ldotune_cal_val, sizeof(uint64_t)); TODO
+    //writeBytes(RF_CONF_ID, 0x30, (uint8_t*)&ldotune_cal_val, 5);
+
+    /* Ramp up SPI */
+    //this->spiSettings = &_fastSPI;
+    this->setClock(ClockSpeed::fast);
 
 }
 void DW1000::initialize()
@@ -197,7 +208,7 @@ void DW1000::readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t len
     uint8_t header_len = cmd.subindex ? (cmd.extended ? 3 : 2) : 1;
     //spi_transceive(header, header_len, data, length);
     //noInterrupts();
-    SPI.beginTransaction(spiSettings);
+    SPI.beginTransaction(*spiSettings);
     digitalWrite(chip_select, LOW);
     for(uint16_t i = 0; i < header_len; i++) {
 	    SPI.transfer(header[i]); // send header
@@ -244,7 +255,7 @@ void DW1000::spi_transceive(uint8_t header[], uint8_t header_length, uint8_t dat
     {
         logger->output("SPI TX Communcation: %X - %X --- %X - %X", data[0], data[1], data[2], data[3]);
     }
-    SPI.beginTransaction(spiSettings);
+    SPI.beginTransaction(*spiSettings);
     digitalWrite(chip_select, LOW);
     for(uint16_t i = 0; i < header_length; i++) {
 	    SPI.transfer(header[i]); // send header
@@ -278,16 +289,11 @@ void DW1000::soft_reset()
     reg = PMSC_CTRL0_RESET_CLEAR; 
     writeBytes(PMSC_ID, PMSC_CTRL0_SOFTRESET_OFFSET, &reg, sizeof(uint8_t));
 
-
-    setClock(ClockSpeed::fast);
+    forceIdle();
  }
 void DW1000::loadLDECode()
 {
     /* see 2.5.5.10 LDELOAD */
-
-    setClock(ClockSpeed::slow);
-    delayMicroseconds(1000);
-
     uint8_t otpctrl[OTP_CTRL_LEN] = {0};
     uint8_t pmsc_ctrl0[PMSC_CTRL0_LEN] = {0};
 
@@ -297,31 +303,27 @@ void DW1000::loadLDECode()
     readBytes(PMSC_ID, PMSC_CTRL0_OFFSET, pmsc_ctrl0, PMSC_CTRL0_LEN);
     logger->output("pmsc %x %x %x %x", pmsc_ctrl0[3], pmsc_ctrl0[2], pmsc_ctrl0[1], pmsc_ctrl0[0]);
 
-    otpctrl[1] |= 1 << 7; /* LDELOAD Bit */
-    logger->output("otp %x %x", otpctrl[1], otpctrl[0]);
-    pmsc_ctrl0[0] = 0x01;
-    pmsc_ctrl0[1] = 0x03;
-    logger->output("pmsc %x %x %x %x", pmsc_ctrl0[3], pmsc_ctrl0[2], pmsc_ctrl0[1], pmsc_ctrl0[0]);
+    /* Set value according to 2.5.5.1.0 DW1000 User Manual: Step L-1 */
+    *(uint32_t*)pmsc_ctrl0 &= ~(0x0000FFFF);
+    *(uint32_t*)pmsc_ctrl0 |= 0x00000301;
     writeBytes(PMSC_ID, PMSC_CTRL0_OFFSET, pmsc_ctrl0, PMSC_CTRL0_LEN);
+    logger->output("pmsc %x %x %x %x", pmsc_ctrl0[3], pmsc_ctrl0[2], pmsc_ctrl0[1], pmsc_ctrl0[0]);
+
+    /* Set value according to 2.5.5.1.0 DW1000 User Manual: Step L-2 */
+    *(uint16_t*)otpctrl &= ~(0xFFFF);;
+    *(uint16_t*)otpctrl |= OTP_CTRL_LDELOAD;
+    logger->output("otp %x %x", otpctrl[1], otpctrl[0]);
     writeBytes(OTP_IF_ID, OTP_CTRL, otpctrl, OTP_CTRL_LEN);
 
     delayMicroseconds(150);
 
-    pmsc_ctrl0[0] = 0x00;
-	pmsc_ctrl0[1] = 0x02;
+    /* Set value according to 2.5.5.1.0 DW1000 User Manual: Step L-3 */
+    *(uint32_t*)pmsc_ctrl0 &= ~(0x0000FFFF);
+    *(uint32_t*)pmsc_ctrl0 |= 0x00000200;
     writeBytes(PMSC_ID, PMSC_CTRL0_OFFSET, pmsc_ctrl0, PMSC_CTRL0_LEN);
-    logger->output("pmsc %x %x %x %x", pmsc_ctrl0[3], pmsc_ctrl0[2], pmsc_ctrl0[1], pmsc_ctrl0[0]);
-
-    readBytes(PMSC_ID, PMSC_CTRL0_OFFSET, pmsc_ctrl0, PMSC_CTRL0_LEN);
-    logger->output("pmsc %x %x %x %x", pmsc_ctrl0[3], pmsc_ctrl0[2], pmsc_ctrl0[1], pmsc_ctrl0[0]);
-
-    //delayMicroseconds(1000);
-    setClock(ClockSpeed::automatic);
-    delayMicroseconds(1000);
-
-    readBytes(OTP_IF_ID, OTP_CTRL, otpctrl, OTP_CTRL_LEN);
-    logger->output("otp %x %x", otpctrl[1], otpctrl[0]);
 }
+
+
 void DW1000::transmit(uint8_t data[], uint16_t length)
 {
     assert(length < (1 << 10) && "length exceeds 10-bit maximum (1023)");
@@ -338,9 +340,7 @@ void DW1000::transmit(uint8_t data[], uint16_t length)
 
     writeBytes(TX_FCTRL_ID, NO_SUB_ADDRESS, frame_control);
 
-    uint32_t system_ctrl = 0;
-    readBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, &system_ctrl);
-    system_ctrl |= SYS_CTRL_TXSTRT; /* Start Transmission Now Bit */
+    uint32_t system_ctrl = SYS_CTRL_TXSTRT; /* Start Transmission Now Bit */
     writeBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, system_ctrl);
 }
 
@@ -356,8 +356,6 @@ void DW1000::setFrameLength(FrameLength frame_length)
 void DW1000::enableInterrupts(enum InterruptTable table)
 {
     writeBytes(SYS_MASK_ID, NO_SUB_ADDRESS, static_cast<uint32_t>(table));
-    uint32_t test = 0;
-    readBytes(SYS_MASK_ID, NO_SUB_ADDRESS, &test);
 }
 
 void DW1000::writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t length)
@@ -382,7 +380,7 @@ void DW1000::writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t le
     uint8_t header_len = cmd.subindex ? (cmd.extended ? 3 : 2) : 1;
     //spi_transceive(header, header_len, data, length);
     //noInterrupts();
-    SPI.beginTransaction(spiSettings);
+    SPI.beginTransaction(*spiSettings);
     digitalWrite(chip_select, LOW);
     for(uint16_t i = 0; i < header_len; i++) {
 	    SPI.transfer(header[i]); // send header
@@ -438,9 +436,7 @@ void DW1000::setPANAdress(uint16_t address)
 void DW1000::startReceiving()
 {
     forceIdle();
-    uint32_t sys_ctrl = 0;
-    readBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, &sys_ctrl);
-    sys_ctrl |= SYS_CTRL_RXENAB;
+    uint32_t sys_ctrl = SYS_CTRL_RXENAB;
     writeBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, sys_ctrl);
 }
 
@@ -485,7 +481,7 @@ void DW1000::setClock(ClockSpeed clock){
     spiSettings = clock.spiSettings;
     logger->output("clock speed pmsc %x %x %x %x", pmsc_ctrl0[3], pmsc_ctrl0[2], pmsc_ctrl0[1], pmsc_ctrl0[0]);
 
-    //writeBytes(PMSC_ID, NO_SUB_ADDRESS, pmsc_ctrl0, PMSC_CTRL0_LEN);
+    writeBytes(PMSC_ID, NO_SUB_ADDRESS, pmsc_ctrl0, PMSC_CTRL0_LEN);
     delay(5);
     
 }

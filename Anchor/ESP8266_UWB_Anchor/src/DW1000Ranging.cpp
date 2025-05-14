@@ -4,10 +4,12 @@ DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType
 {
     this->deviceType = deviceType;
     this->dw1000 = dw1000;
-    delay(1000);
-    dw1000.soft_reset();
+
     delay(1000);
     dw1000.initialize();
+    delay(1000);
+    //dw1000.soft_reset();
+    delay(1000);
     
 
     uint16_t pan = 0xDECA;
@@ -18,26 +20,27 @@ DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType
     switch (this->deviceType)
     {
         case TAG:
-            device_id = 0xAAAA;
-            interrupts |= InterruptTable::INTERRUPT_ALL;
+            device_id = 0xCAFE;
+            interrupts |= (InterruptTable) SYS_MASK_MTXFRS;
             break;
         case ANCHOR:
             device_id = 0xAFFE;
             interrupts |= (InterruptTable) SYS_MASK_MRXDFR;
+            dw1000.setReceiverAutoReenable(true);
             break;
         default:
             break;
     }
-
-
-    dw1000.enableInterrupts(interrupts);
-   
-    dw1000.setMode(JOPEL110);
-
+    
     dw1000.setPANAdress(pan);
-    delay(100);
     dw1000.setDeviceAddress(device_id);
-    delay(100);
+
+    dw1000.setMode(THOTRO110);
+    
+    dw1000.enableInterrupts(interrupts);
+    
+    delay(1000);
+
     uint32_t read = 0;
     dw1000.readBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, &read);
     dw1000.logger->addBuffer("chan_trl %x", read);
@@ -91,7 +94,8 @@ void DW1000Ranging::loop()
             break;
         case ANCHOR:
             dw1000.startReceiving();
-            dw1000.setReceiverAutoReenable(true);
             break;
     }
+
+    delay(100);
 }

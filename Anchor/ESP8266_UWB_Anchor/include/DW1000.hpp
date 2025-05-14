@@ -20,7 +20,7 @@ typedef struct {
 
 struct ClockSpeed {
     uint8_t pmsc0_clock;
-    SPISettings spiSettings;
+    const SPISettings* spiSettings;
 
     static const ClockSpeed automatic;
     static const ClockSpeed slow;
@@ -108,11 +108,14 @@ class DW1000 {
         void addLogger(Logger* logger);
         void forceIdle();
         Logger* logger = nullptr;
+
+        static const SPISettings _fastSPI;
+        static const SPISettings _slowSPI;
+        static const SPISettings* spiSettings; //= SPISettings(20000000L, MSBFIRST, SPI_MODE0);
     private:
         uint8_t irq = D2;
         uint8_t chip_select = D8;
         DeviceMode current_mode = IDLE;
-        SPISettings spiSettings = SPISettings(20000000L, MSBFIRST, SPI_MODE0);
         void spi_transceive(uint8_t header[], uint8_t header_length, uint8_t data[], uint16_t data_length);
         void clearStatusRegister();
         

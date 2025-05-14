@@ -1,5 +1,5 @@
 #pragma once
-#include <ESP8266WiFi.h>
+//#include <ESP8266WiFi.h>
 #include <ArduinoWebsockets.h>
 
 class WifiHandler

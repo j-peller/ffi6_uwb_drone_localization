@@ -2,15 +2,15 @@
 #include <Arduino.h>
 #include <cassert>
 
-const ClockSpeed ClockSpeed::automatic = {
+ClockSpeed ClockSpeed::automatic = {
     .pmsc0_clock = PMSC_CTRL0_SYSCLKS_AUTO,
     .spiSettings = SPISettings(20000000L, MSBFIRST, SPI_MODE0),
 };
-const ClockSpeed ClockSpeed::slow = {
+ClockSpeed ClockSpeed::slow = {
     .pmsc0_clock = PMSC_CTRL0_SYSCLKS_19M,
     .spiSettings = SPISettings(2000000L, MSBFIRST, SPI_MODE0),
 };
-const ClockSpeed ClockSpeed::fast = {
+ClockSpeed ClockSpeed::fast = {
     .pmsc0_clock = PMSC_CTRL0_SYSCLKS_125M,
     .spiSettings = SPISettings(20000000L, MSBFIRST, SPI_MODE0),
 };
@@ -154,10 +154,46 @@ void DW1000::setMode(dw1000_mode_t mode)
 
     /* Load LDOTUNE_CAL value from OTP into LDOTUNE Register as described in Section 2.5.5.11 page 18*/
     uint64_t ldotune_cal_val = 0;
-   // readBytesOTP(0x0004, (uint8_t*)&ldotune_cal_val, sizeof(uint64_t)); TODO
+    readBytesOTP(0x0004, (uint8_t*)&ldotune_cal_val, sizeof(uint64_t));
     writeBytes(RF_CONF_ID, 0x30, (uint8_t*)&ldotune_cal_val, 5);
-
 }
+
+/**
+ * @brief Read data from the OTP memory of the DWM1000
+ */
+void DW1000::readBytesOTP(uint16_t addr, uint8_t* data, uint32_t len)
+{
+    for (uint32_t i = 0; i < (len / 4); i++) {
+        _readBytesOTP(addr + i, data + (i * sizeof(uint32_t)));
+    }
+}
+
+
+/**
+ * @brief OTP Data is always returned in 4 byte words.
+ */
+void DW1000::_readBytesOTP(uint16_t addr, uint8_t* data)
+{
+    uint16_t otp_addr = addr;
+    /* Write OTP Address for read */
+    writeBytes(OTP_IF_ID, OTP_ADDR, (uint8_t*)&otp_addr, sizeof(uint16_t));
+
+    /* Perform OTP Read - Manual read mode has to be set */
+    uint8_t otp_cmd = OTP_CTRL_OTPREAD | OTP_CTRL_OTPRDEN;
+    writeBytes(OTP_IF_ID, OTP_CTRL, (uint8_t*)&otp_cmd, sizeof(uint8_t));
+    otp_cmd = OTP_CTRL_OTPRDEN;
+    writeBytes(OTP_IF_ID, OTP_CTRL, (uint8_t*)&otp_cmd, sizeof(uint8_t));
+
+    /* Read data is available after 40ns */
+    delayMicroseconds(1000);
+
+    /* Read data from OTP */
+    readBytes(OTP_IF_ID, OTP_RDAT, data, sizeof(uint32_t));
+
+    otp_cmd = 0x00;
+    writeBytes(OTP_IF_ID, OTP_CTRL, (uint8_t*)&otp_cmd, sizeof(uint8_t));
+}
+
 void DW1000::initialize()
 {
     delay(5);
@@ -178,7 +214,7 @@ void DW1000::addLogger(Logger* logger)
 
 void DW1000::readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t length)
 {
-    SPI.begin();
+    //SPI.begin();
     /* Build SPI Transaction Header according to 2.2.1.2 p4 DW1000 User Manual */
     dw1000_spi_cmd_t cmd = {
         .reg = reg,
@@ -197,7 +233,7 @@ void DW1000::readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t len
     uint8_t header_len = cmd.subindex ? (cmd.extended ? 3 : 2) : 1;
     //spi_transceive(header, header_len, data, length);
     //noInterrupts();
-    SPI.beginTransaction(spiSettings);
+    SPI.beginTransaction(*spiSettings);
     digitalWrite(chip_select, LOW);
     for(uint16_t i = 0; i < header_len; i++) {
 	    SPI.transfer(header[i]); // send header
@@ -209,7 +245,7 @@ void DW1000::readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t len
     delayMicroseconds(5);
 	digitalWrite(chip_select, HIGH);
 	SPI.endTransaction();
-    SPI.end();
+    //SPI.end();
 
     delayMicroseconds(10);
     //interrupts();
@@ -244,7 +280,7 @@ void DW1000::spi_transceive(uint8_t header[], uint8_t header_length, uint8_t dat
     {
         logger->output("SPI TX Communcation: %X - %X --- %X - %X", data[0], data[1], data[2], data[3]);
     }
-    SPI.beginTransaction(spiSettings);
+    SPI.beginTransaction(*spiSettings);
     digitalWrite(chip_select, LOW);
     for(uint16_t i = 0; i < header_length; i++) {
 	    SPI.transfer(header[i]); // send header
@@ -286,7 +322,7 @@ void DW1000::loadLDECode()
     /* see 2.5.5.10 LDELOAD */
 
     setClock(ClockSpeed::slow);
-    delayMicroseconds(1000);
+    delay(5);
 
     uint8_t otpctrl[OTP_CTRL_LEN] = {0};
     uint8_t pmsc_ctrl0[PMSC_CTRL0_LEN] = {0};
@@ -305,7 +341,7 @@ void DW1000::loadLDECode()
     writeBytes(PMSC_ID, PMSC_CTRL0_OFFSET, pmsc_ctrl0, PMSC_CTRL0_LEN);
     writeBytes(OTP_IF_ID, OTP_CTRL, otpctrl, OTP_CTRL_LEN);
 
-    delayMicroseconds(150);
+    delay(5);
 
     pmsc_ctrl0[0] = 0x00;
 	pmsc_ctrl0[1] = 0x02;
@@ -317,7 +353,7 @@ void DW1000::loadLDECode()
 
     //delayMicroseconds(1000);
     setClock(ClockSpeed::automatic);
-    delayMicroseconds(1000);
+    delay(5);
 
     readBytes(OTP_IF_ID, OTP_CTRL, otpctrl, OTP_CTRL_LEN);
     logger->output("otp %x %x", otpctrl[1], otpctrl[0]);
@@ -355,6 +391,13 @@ void DW1000::setFrameLength(FrameLength frame_length)
 
 void DW1000::enableInterrupts(enum InterruptTable table)
 {
+    Serial.println("alive");
+    if(this->spiSettings == nullptr)
+    {
+        Serial.println("spi settings are null");
+    } else {
+        Serial.println("spi settings are not null");
+    }
     writeBytes(SYS_MASK_ID, NO_SUB_ADDRESS, static_cast<uint32_t>(table));
     uint32_t test = 0;
     readBytes(SYS_MASK_ID, NO_SUB_ADDRESS, &test);
@@ -363,7 +406,7 @@ void DW1000::enableInterrupts(enum InterruptTable table)
 void DW1000::writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t length)
 {
     /* Build SPI Transaction Header according to 2.2.1.2 p4 DW1000 User Manual */
-    SPI.begin();
+    //SPI.begin();
     dw1000_spi_cmd_t cmd = {
         .reg = reg,
         .subindex = offset != 0,
@@ -382,7 +425,7 @@ void DW1000::writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t le
     uint8_t header_len = cmd.subindex ? (cmd.extended ? 3 : 2) : 1;
     //spi_transceive(header, header_len, data, length);
     //noInterrupts();
-    SPI.beginTransaction(spiSettings);
+    SPI.beginTransaction(*spiSettings);
     digitalWrite(chip_select, LOW);
     for(uint16_t i = 0; i < header_len; i++) {
 	    SPI.transfer(header[i]); // send header
@@ -394,7 +437,7 @@ void DW1000::writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint32_t le
     delayMicroseconds(5);
 	digitalWrite(chip_select, HIGH);
 	SPI.endTransaction();
-    SPI.end();
+    //SPI.end();
     //interrupts();
     delayMicroseconds(10);
 
@@ -456,6 +499,7 @@ void DW1000::handleInterrupt()
     {
         if(logger!=nullptr) logger->addBuffer("Knock knock! Damn we received something! %x", sys_status);
     }
+
 }
 
 void DW1000::idle() {
@@ -470,22 +514,22 @@ void DW1000::setDataRate(uint8_t rate)
 void DW1000::clearStatusRegister()
 {
     uint8_t data[SYS_STATUS_LEN] = {0};
-    memset(data, 0xFF, SYS_STATUS_LEN);
+    //memset(data, 0xFF, SYS_STATUS_LEN);
     writeBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, data, SYS_STATUS_LEN);
 }
 
 void DW1000::setClock(ClockSpeed clock){
-    uint8_t pmsc_ctrl0[PMSC_CTRL0_LEN] = {0};
-    readBytes(PMSC_ID, NO_SUB_ADDRESS, pmsc_ctrl0, PMSC_CTRL0_LEN);
+    uint32_t pmsc_ctrl0 = 0;
+    readBytes(PMSC_ID, PMSC_CTRL0_OFFSET, &pmsc_ctrl0);
 
-    logger->output("clock speed pmsc %x %x %x %x", pmsc_ctrl0[3], pmsc_ctrl0[2], pmsc_ctrl0[1], pmsc_ctrl0[0]);
+    logger->output("clock speed pmsc %x ", pmsc_ctrl0);
+    pmsc_ctrl0 &= ~(0x3UL); //< clear sysclk bits
 
-    pmsc_ctrl0[0] &= ~(0x3); // reset current clock settings
-    pmsc_ctrl0[0] |= clock.pmsc0_clock;
-    spiSettings = clock.spiSettings;
-    logger->output("clock speed pmsc %x %x %x %x", pmsc_ctrl0[3], pmsc_ctrl0[2], pmsc_ctrl0[1], pmsc_ctrl0[0]);
+    pmsc_ctrl0 |= clock.pmsc0_clock;
+    spiSettings = &(clock.spiSettings);
+    logger->output("clock speed pmsc %x ", pmsc_ctrl0);
 
-    //writeBytes(PMSC_ID, NO_SUB_ADDRESS, pmsc_ctrl0, PMSC_CTRL0_LEN);
+    writeBytes(PMSC_ID, NO_SUB_ADDRESS, pmsc_ctrl0);
     delay(5);
     
 }
@@ -509,6 +553,7 @@ void DW1000::readReceivedData(uint8_t** data, uint16_t* length)
 {
     /* get length of received data from Frame Info register */
     uint16_t len = getReceivedDataLength();
+    if(len == 0) return;
     /* TODO: Check if FCS is good */
     if(logger) logger->output("LENGTH %x", len);
     /* */
@@ -541,7 +586,7 @@ uint16_t DW1000::getReceivedDataLength()
 void DW1000::deleteReceivedDataLength()
 {
     uint32_t data = 0;
-    
-    data = ~(RX_FINFO_RXFLE_MASK | RX_FINFO_RXFLEN_MASK);
+    readBytes(RX_FINFO_ID, NO_SUB_ADDRESS, &data);
+    data &= ~(RX_FINFO_RXFLE_MASK | RX_FINFO_RXFLEN_MASK);
     writeBytes(RX_FINFO_ID, NO_SUB_ADDRESS, data);
 }

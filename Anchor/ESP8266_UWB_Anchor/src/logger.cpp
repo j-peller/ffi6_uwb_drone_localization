@@ -17,7 +17,11 @@ const void Logger::output(const char* message, ...)
     va_end(args);
 
     Serial.println(buffer);
-    this->wifiHandler->logData(buffer);
+    if(this->wifiHandler != nullptr)
+    {
+        this->wifiHandler->logData(buffer);
+    }
+    
 }
 
 const void Logger::addBuffer(const char* message, ...)

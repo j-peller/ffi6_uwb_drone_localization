@@ -1,13 +1,21 @@
 #include "DW1000Ranging.hpp"
-
-DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType(deviceType), dw1000(dw1000)
+SPISettings test = SPISettings(2000000L, MSBFIRST, SPI_MODE0);
+DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000* dw1000)
 {
     this->deviceType = deviceType;
     this->dw1000 = dw1000;
+    this->dw1000->spiSettings = &test;
+    Serial.println("TEST1");
+    if(this->dw1000->spiSettings == nullptr) {
+        Serial.println("nullptr");
+    } else {
+        Serial.println("not nullptr");
+    }
     delay(1000);
-    dw1000.soft_reset();
+    //dw1000->soft_reset();
     delay(1000);
-    dw1000.initialize();
+    dw1000->initialize();
+    Serial.println("TEST2");
     
 
     uint16_t pan = 0xDECA;
@@ -29,18 +37,20 @@ DW1000Ranging::DW1000Ranging(DeviceType deviceType, DW1000 &dw1000) : deviceType
             break;
     }
 
+    Serial.println("TEST3");
+    dw1000->enableInterrupts(interrupts);
+    Serial.println("TEST4");
+    dw1000->setMode(JOPEL110);
+    Serial.println("TEST5");
 
-    dw1000.enableInterrupts(interrupts);
-   
-    dw1000.setMode(JOPEL110);
-
-    dw1000.setPANAdress(pan);
+    dw1000->setPANAdress(pan);
     delay(100);
-    dw1000.setDeviceAddress(device_id);
+    dw1000->setDeviceAddress(device_id);
     delay(100);
     uint32_t read = 0;
-    dw1000.readBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, &read);
-    dw1000.logger->addBuffer("chan_trl %x", read);
+    dw1000->readBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, &read);
+    dw1000->logger->addBuffer("chan_trl %x", read);
+    
 }
 
 void DW1000Ranging::loop()
@@ -49,49 +59,49 @@ void DW1000Ranging::loop()
     static uint8_t counter = 0;
 
     uint32_t read = 0;
-    dw1000.readBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, &read);
-    dw1000.logger->addBuffer("chan_trl %x", read);
+    dw1000->readBytes(CHAN_CTRL_ID, NO_SUB_ADDRESS, &read);
+    dw1000->logger->addBuffer("chan_trl %x", read);
 
     read = 0;
-    dw1000.readBytes(DEV_ID_ID, NO_SUB_ADDRESS, &read);
-    dw1000.logger->addBuffer("devid %x", read);
+    dw1000->readBytes(DEV_ID_ID, NO_SUB_ADDRESS, &read);
+    dw1000->logger->addBuffer("devid %x", read);
 
     read = 0;
-    dw1000.readBytes(PANADR_ID, NO_SUB_ADDRESS, &read);
-    dw1000.logger->addBuffer("panaddr %x", read);
+    dw1000->readBytes(PANADR_ID, NO_SUB_ADDRESS, &read);
+    dw1000->logger->addBuffer("panaddr %x", read);
 
     read = 0;
-    dw1000.readBytes(SYS_MASK_ID, NO_SUB_ADDRESS, &read);
-    dw1000.logger->addBuffer("sys_mask %x", read);
+    dw1000->readBytes(SYS_MASK_ID, NO_SUB_ADDRESS, &read);
+    dw1000->logger->addBuffer("sys_mask %x", read);
     
     read = 0;
-    dw1000.readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &read);
-    dw1000.logger->addBuffer("sys_status %x", read);
+    dw1000->readBytes(SYS_STATUS_ID, NO_SUB_ADDRESS, &read);
+    dw1000->logger->addBuffer("sys_status %x", read);
 
     uint8_t* message = nullptr;
     uint16_t length = 0;
-    //dw1000.readReceivedData(&message, &length);
+    dw1000->readReceivedData(&message, &length);
 
     if(message!=nullptr)
     {
         for (int i = 0; i < length; i++) {
-            dw1000.logger->output("%02x ", message[i]);
+            dw1000->logger->output("%02x ", message[i]);
         }
         delete[] message;
     } else {
-        dw1000.logger->output("null");
+        dw1000->logger->output("null");
     }
 
     switch(this->deviceType)
     {
         case TAG:
             tx_message[2] = counter++;
-            dw1000.transmit(tx_message, 3);
-            dw1000.logger->addBuffer("Transmit!");
+            dw1000->transmit(tx_message, 3);
+            dw1000->logger->addBuffer("Transmit!");
             break;
         case ANCHOR:
-            dw1000.startReceiving();
-            dw1000.setReceiverAutoReenable(true);
+            dw1000->startReceiving();
+            dw1000->setReceiverAutoReenable(true);
             break;
     }
 }

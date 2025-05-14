@@ -22,9 +22,9 @@ struct ClockSpeed {
     uint8_t pmsc0_clock;
     SPISettings spiSettings;
 
-    static const ClockSpeed automatic;
-    static const ClockSpeed slow;
-    static const ClockSpeed fast;
+    static ClockSpeed automatic;
+    static ClockSpeed slow;
+    static ClockSpeed fast;
 };
 
 
@@ -106,15 +106,18 @@ class DW1000 {
 
 
         void addLogger(Logger* logger);
+        void readBytesOTP(uint16_t addr, uint8_t* data, uint32_t len);
         void forceIdle();
         Logger* logger = nullptr;
+        SPISettings* spiSettings;
     private:
-        uint8_t irq = D2;
-        uint8_t chip_select = D8;
+        uint8_t irq = 2;
+        uint8_t chip_select = 5;
         DeviceMode current_mode = IDLE;
-        SPISettings spiSettings = SPISettings(20000000L, MSBFIRST, SPI_MODE0);
+        
         void spi_transceive(uint8_t header[], uint8_t header_length, uint8_t data[], uint16_t data_length);
         void clearStatusRegister();
+        void _readBytesOTP(uint16_t addr, uint8_t* data);
         
         
 };

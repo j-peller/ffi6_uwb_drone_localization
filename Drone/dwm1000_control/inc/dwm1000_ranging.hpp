@@ -12,39 +12,119 @@
 
 #include <memory>
 
+// Helper macro for state transitions (put in header)
+#define HANDLE_STATE_TRANSITION(ret_val, next_state, timeout_state, timeout_occurred) \
+    if (ret_val == dwm_com_error_t::SUCCESS) { \
+        state = next_state; \
+    } \
+    else if (ret_val == dwm_com_error_t::TIMEOUT) { \
+        state = timeout_state; \
+        timeout_occurred = true; \
+        break; \
+    } else { \
+        return ret_val; \
+    }
+
+
 /**
- * Perform ranging to a set of anchors
+ * 
  */
 class DWMRanging {
 public:
     static DWMRanging* create_instance(DWMController* controller);
-    ~DWMRanging();
+    virtual ~DWMRanging() = 0;
+
+protected:
+    DWMRanging();
+    DWMRanging(DWMController* controller);
+
+public:
+    enum class RangingState { 
+        INIT,
+        RESP_ACK,
+        FINAL,
+        REPORT,
+        COMPLETE
+    };
+
+protected:
+    /* DWM1000 Controller */
+    DWMController*  _controller;
+};
+
+
+/**
+ * 
+ */
+class DWMRangingDrone: public DWMRanging {
+friend class DWMRanging;
+
+public:
+    ~DWMRangingDrone() override {
+        if (_controller != NULL)
+            delete _controller;
+    };
 
     /* Ranging */
     dwm_com_error_t get_distances_to_anchors(distances* distances);
     dwm_com_error_t get_distance_to_anchor(uint16_t anchor_addr, double* distance);
+    dwm_com_error_t calibrate_antenna_delay(double known_distance_m, double allowed_error_m, int max_iterations);
 
 private:
-    DWMRanging();
-    DWMRanging(DWMController* controller);
+    DWMRangingDrone() : DWMRanging() {};
+    DWMRangingDrone(DWMController* controller) : DWMRanging(controller) {};
 
-    dwm_com_error_t do_init_state(DW1000Time& init_tx_ts, uint16_t anchor_addr);
-    dwm_com_error_t do_response_ack_state(DW1000Time& ack_rx_ts);
-    dwm_com_error_t do_final_state(DW1000Time& fin_tx_ts, uint16_t anchor_addr);
-    dwm_com_error_t do_report_state(DW1000Time& esp_init_rx_ts, DW1000Time&
-         esp_resp_tx_ts, DW1000Time& esp_fin_rx_t);
+    dwm_com_error_t do_init_state(DW1000Time& t_sp, uint16_t anchor_addr);
+    dwm_com_error_t do_response_ack_state(DW1000Time& t_ra);
+    dwm_com_error_t do_final_state(DW1000Time& t_sf, uint16_t anchor_addr);
+    dwm_com_error_t do_report_state(DW1000Time& t_rp, DW1000Time& t_sa, DW1000Time& t_rf);
 
-    static double timestamps2distance(
-        DW1000Time& init_tx_ts, DW1000Time& ack_rx_ts, DW1000Time& fin_tx_ts, 
-        DW1000Time& esp_init_rx_ts, DW1000Time& esp_resp_tx_ts, DW1000Time& esp_fin_rx_ts);
+    double timestamps2distance( DW1000Time& t_sp, DW1000Time& t_ra, DW1000Time& t_sf,
+        DW1000Time& t_rp, DW1000Time& t_sa, DW1000Time& t_rf);
+
+    static void waitOutError();
+
+    inline bool checkForTimeout(dwm_com_error_t ret) {
+        return (ret == dwm_com_error_t::TIMEOUT);
+    };
+
+};
+
+/**
+ * 
+ */
+class DWMRangingAnchor : public DWMRanging {
+friend class DWMRanging;
+public:
+    ~DWMRangingAnchor() override {
+        if (_controller != NULL)
+            delete _controller;
+    };
+
+
+    /* Ranging */
+    dwm_com_error_t run_state_machine();
+
+private:
+    DWMRangingAnchor() : DWMRanging() {};
+    DWMRangingAnchor(DWMController* controller) : DWMRanging(controller) {};
+
+    dwm_com_error_t do_init_state();
+    dwm_com_error_t do_response_ack_state(uint16_t anchor_addr);
+    dwm_com_error_t do_final_state();
+    dwm_com_error_t do_report_state(uint16_t anchor_addr);
+    
     static void waitOutError();
 
 
 private:
-    /* DWM1000 of the Drone to send and receive messages */
-    DWMController*  _controller;
+    DW1000Time  _init_rx_ts;
+    DW1000Time  _resp_tx_ts;
+    DW1000Time  _final_rx_ts;
 
 };
+
+
 
 
 #endif

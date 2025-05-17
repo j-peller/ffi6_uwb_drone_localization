@@ -23,6 +23,13 @@ include_directories(${CMAKE_SOURCE_DIR}/../../shared/inc)
 # Add the source files
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 file(GLOB_RECURSE COORDS_SOURCES "../coords_calc/*.cpp")
+file(GLOB_RECURSE TEST_SOURCES 
+    "src/dwm1000_ctrl.cpp" 
+    "src/dwm1000_ranging.cpp" 
+    "src/dwm1000_ranging_drone.cpp" 
+    "src/dw1000_modes.cpp" 
+    "src/dw1000_time.cpp"
+    "test/ranging_test_accuracy.cpp")
 
 # 
 find_package(Eigen3 3.4 REQUIRED)
@@ -34,27 +41,26 @@ add_executable(${PROJECT_NAME} ${SOURCES} ${COORDS_SOURCES})
 target_link_libraries(${PROJECT_NAME} Eigen3::Eigen gpiod)
 
 
-
 # Enable testing
-#enable_testing()
+enable_testing()
 
 # Google Test Integration
-#include(FetchContent)
-#FetchContent_Declare(
-#  googletest
-#  GIT_REPOSITORY https://github.com/google/googletest.git
-#  GIT_TAG        v1.16.0  # You can change the tag to the latest stable release
-#)
-#FetchContent_MakeAvailable(googletest)
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG        v1.16.0  # You can change the tag to the latest stable release
+)
+FetchContent_MakeAvailable(googletest)
 
 # Include directories for Google Test
-#include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
 # Add a test executable for unit tests
-#add_executable(DW1000TimeTests "test/dw1000_time_test.cpp" "src/dw1000_time.cpp")
+add_executable(RangingTest ${TEST_SOURCES})
 
 # Link the test executable with Google Test and the project source
-#target_link_libraries(DW1000TimeTests gtest gtest_main)
+target_link_libraries(RangingTest gtest gtest_main gpiod Eigen3::Eigen)
 
 # Run tests after the build
-#add_test(NAME DW1000TimeTests COMMAND DW1000TimeTests)
+add_test(NAME RangingTest COMMAND RangingTest)

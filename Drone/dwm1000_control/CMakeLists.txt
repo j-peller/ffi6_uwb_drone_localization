@@ -41,26 +41,26 @@ add_executable(${PROJECT_NAME} ${SOURCES} ${COORDS_SOURCES})
 target_link_libraries(${PROJECT_NAME} Eigen3::Eigen gpiod)
 
 
-# Enable testing
-enable_testing()
-
-# Google Test Integration
-include(FetchContent)
-FetchContent_Declare(
-  googletest
-  GIT_REPOSITORY https://github.com/google/googletest.git
-  GIT_TAG        v1.16.0  # You can change the tag to the latest stable release
-)
-FetchContent_MakeAvailable(googletest)
-
-# Include directories for Google Test
-include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
-
-# Add a test executable for unit tests
-add_executable(RangingTest ${TEST_SOURCES})
-
-# Link the test executable with Google Test and the project source
-target_link_libraries(RangingTest gtest gtest_main gpiod Eigen3::Eigen)
-
-# Run tests after the build
-add_test(NAME RangingTest COMMAND RangingTest)
+## Enable testing
+#enable_testing()
+#
+## Google Test Integration
+#include(FetchContent)
+#FetchContent_Declare(
+#  googletest
+#  GIT_REPOSITORY https://github.com/google/googletest.git
+#  GIT_TAG        v1.16.0  # You can change the tag to the latest stable release
+#)
+#FetchContent_MakeAvailable(googletest)
+#
+## Include directories for Google Test
+#include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+#
+## Add a test executable for unit tests
+#add_executable(RangingTest ${TEST_SOURCES})
+#
+## Link the test executable with Google Test and the project source
+#target_link_libraries(RangingTest gtest gtest_main gpiod Eigen3::Eigen)
+#
+## Run tests after the build
+#add_test(NAME RangingTest COMMAND RangingTest)

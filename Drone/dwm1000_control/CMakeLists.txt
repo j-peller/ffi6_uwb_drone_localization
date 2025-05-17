@@ -26,6 +26,7 @@ file(GLOB_RECURSE COORDS_SOURCES "../coords_calc/*.cpp")
 file(GLOB_RECURSE TEST_SOURCES 
     "src/dwm1000_ctrl.cpp" 
     "src/dwm1000_ranging.cpp" 
+    "src/dwm1000_ranging_drone.cpp" 
     "src/dw1000_modes.cpp" 
     "src/dw1000_time.cpp"
     "test/ranging_test_accuracy.cpp")

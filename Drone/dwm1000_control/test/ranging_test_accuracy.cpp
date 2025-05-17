@@ -11,6 +11,7 @@ class RangingTest : public ::testing::Test {
 protected:
     void SetUp() override {
         dw1000_dev_instance_t device = {
+            .role = dwm1000_role_t::DRONE,
             .spi_dev = "/dev/spidev0.0",
             .spi_baudrate = SLOW_SPI, //< Start mit 2MHz clock and ramp up after init
             .spi_bits_per_word = 8,
@@ -24,7 +25,7 @@ protected:
             fprintf(stderr, "Failed to create DWMController instance\n");
         }
 
-        tag = DWMRanging::create_instance(controller);
+        tag = dynamic_cast<DWMRangingDrone*>(DWMRanging::create_instance(controller));
         if (tag == NULL) {
             fprintf(stderr, "Failed to create DWMRanging instance\n");
         }
@@ -35,7 +36,7 @@ protected:
         distances.reserve(numIterations);
     }
 
-    DWMRanging* tag;
+    DWMRangingDrone* tag;
     DWMController* controller;
     int numIterations;
     std::string outputFileName;

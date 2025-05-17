@@ -20,18 +20,27 @@
 
 #define SYS_STATUS_ALL_TX_GOOD      (SYS_STATUS_TXFRB | SYS_STATUS_TXPRS | SYS_STATUS_TXPHS | SYS_STATUS_TXFRS)
 
+/**
+ * 
+ */
+typedef enum {
+    DRONE,
+    ANCHOR,
+} dwm1000_role_t;
+
 
 /**
  * @brief DWM1000 device instance structure
  */
 typedef struct {
-    const char* spi_dev;
-    uint32_t    spi_baudrate;
-    uint8_t     spi_bits_per_word;
-    uint8_t     spi_mode;
-    const char* gpiod_chip;
-    uint8_t     irq_gpio_pin;
-    uint8_t     rst_gpio_pin;
+    dwm1000_role_t  role;
+    const char*     spi_dev;
+    uint32_t        spi_baudrate;
+    uint8_t         spi_bits_per_word;
+    uint8_t         spi_mode;
+    const char*     gpiod_chip;
+    uint8_t         irq_gpio_pin;
+    uint8_t         rst_gpio_pin;
 } dw1000_dev_instance_t;
 
 
@@ -121,6 +130,8 @@ typedef struct {
 } dw1000_mode_t;
 
 
+
+
 /**
  * @brief DWM1000 Controller class. Communication Interface to the DWM1000 using SPI
  */
@@ -176,6 +187,8 @@ public:
     void get_device_id(uint32_t* device_id);
     void get_device_short_addr(uint16_t* short_addr);
     void get_device_pan_id(uint16_t* pan_id);
+    dwm1000_role_t get_role();
+
 
     /* Testing Functions */
     dwm_com_error_t test_transmission_timestamp(DW1000Time& tx_time, uint8_t* payload);

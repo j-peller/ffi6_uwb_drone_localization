@@ -664,6 +664,15 @@ void DWMController::get_device_pan_id(uint16_t* pan_id)
 /**
  * 
  */
+dwm1000_role_t DWMController::get_role()
+{
+    return _dev_instance.role;
+}
+
+
+/**
+ * 
+ */
 dwm_com_error_t DWMController::test_transmission_timestamp(DW1000Time& tx_time, uint8_t* payload)
 {
     dwm_com_error_t ret = SUCCESS;

@@ -1,14 +1,24 @@
 #include "../inc/dwm1000_ranging.hpp"
 #include "../inc/dw1000_modes.h"
-//#include "../inc/dwm1000_ranging_anchor.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <linux/spi/spidev.h>
 
+/* Change depending on role state */
+const dwm1000_role_t ROLE = dwm1000_role_t::DRONE;
+
+/*  */
+void run_drone(DWMController* controller);
+void run_anchor(DWMController* controller);
+
+/**
+ * 
+ */
 int main() {
     dw1000_dev_instance_t device = {
+        .role = ROLE,
         .spi_dev = "/dev/spidev0.0",
         .spi_baudrate = SLOW_SPI, //< Start mit 2MHz clock and ramp up after init
         .spi_bits_per_word = 8,
@@ -69,17 +79,46 @@ int main() {
     //}
 
 
-    /**
-     * Uncomment respective for testing
-     */
-
-    DWMRanging* tag = DWMRanging::create_instance(controller);
-    double distance = 0.0;
-    tag->get_distance_to_anchor(ANCHOR_1, &distance);
-    fprintf(stdout, "Got distance: %lfm\n", distance);
-
-
-    delete tag;
+    switch (ROLE) {
+        case dwm1000_role_t::DRONE:
+            run_drone(controller);
+            break;
+        case dwm1000_role_t::ANCHOR:
+            run_anchor(controller);
+            break;
+    }
 
     return EXIT_SUCCESS;
+}
+
+void run_drone(DWMController* controller) {
+    fprintf(stdout, "Running as Drone\n");
+    DWMRangingDrone* tag = dynamic_cast<DWMRangingDrone*>(DWMRanging::create_instance(controller));
+    if (tag == NULL) {
+        fprintf(stderr, "Failed to create DWMRanging instance\n");
+        return;
+    }
+
+    double distance = 0.0;
+    tag->get_distance_to_anchor(ANCHOR_1, &distance);
+    fprintf(stdout, "Got distances: %lfm\n", distance);
+
+    delete tag;
+}
+
+void run_anchor(DWMController* controller) {
+    fprintf(stdout, "Running as Anchor\n");
+    DWMRangingAnchor* anchor = dynamic_cast<DWMRangingAnchor*>(DWMRanging::create_instance(controller));
+    if (anchor == NULL) {
+        fprintf(stderr, "Failed to create DWMRanging instance\n");
+        return;
+    }
+
+    while (true) {
+        if (anchor->run_state_machine() == SUCCESS) {
+            fprintf(stdout, "Successfull Ranging Done\n");
+        }
+    }
+
+    delete anchor;
 }

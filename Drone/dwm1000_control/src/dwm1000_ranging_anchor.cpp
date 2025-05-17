@@ -1,15 +1,6 @@
-#include "../inc/dwm1000_ranging_anchor.hpp"
+#include "../inc/dwm1000_ranging.hpp"
 #include "../inc/dw1000_time.hpp"
 #include <time.h>
-
-
-/**
- * 
- */
-DWMRangingAnchor::~DWMRangingAnchor()
-{
-    /* TODO */
-}
 
 
 /**

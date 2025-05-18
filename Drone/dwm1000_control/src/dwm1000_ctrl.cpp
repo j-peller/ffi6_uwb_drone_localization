@@ -528,10 +528,10 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t ti
             }
                 
             /* Drain remaining events without status checks */
-            //if (gpiod_line_event_wait(_irq_line, &remaining_ts) > 0) {
-                //fprintf(stdout, "Draining remaining events\n");
-                //while(gpiod_line_event_read(_irq_line, &event) > 0) {
-                //}
+            //if (gpiod_line_event_wait(_irq_line, &timeout_ts) > 0) {
+            //    fprintf(stdout, "Draining remaining events\n");
+            //    while(gpiod_line_event_read(_irq_line, &event) > 0) {
+            //    }
             //}
                     
             return SUCCESS;

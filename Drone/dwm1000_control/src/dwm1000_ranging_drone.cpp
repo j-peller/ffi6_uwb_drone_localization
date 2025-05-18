@@ -109,7 +109,7 @@ dwm_com_error_t DWMRangingDrone::do_init_state(DW1000Time& init_tx_ts, uint16_t 
     };
 
     /* */
-    _controller->set_receiver_auto_reenable(false);
+    //_controller->set_receiver_auto_reenable(false);
 
     /* Write Packet payload to tx buffer */
     _controller->write_transmission_data((uint8_t*)&init_msg, sizeof(twr_message_t));
@@ -146,7 +146,7 @@ dwm_com_error_t DWMRangingDrone::do_response_ack_state(DW1000Time& ack_rx_ts)
 
     /* Start reception of packets */
     //_controller->start_receiving();
-    _controller->set_receiver_auto_reenable(true);
+    //_controller->set_receiver_auto_reenable(true);
     
     // poll and check for error
     while (true)
@@ -203,7 +203,7 @@ dwm_com_error_t DWMRangingDrone::do_final_state(DW1000Time& fin_tx_ts, uint16_t 
     };
 
     /* */
-    _controller->set_receiver_auto_reenable(false);
+    //_controller->set_receiver_auto_reenable(false);
 
     /* Write Packet payload to tx buffer */
     _controller->write_transmission_data((uint8_t*)&final_msg, sizeof(twr_message_t));
@@ -242,7 +242,7 @@ dwm_com_error_t DWMRangingDrone::do_report_state(DW1000Time& esp_init_rx_ts, DW1
 
     /* Start reception of packets */
     //_controller->start_receiving();
-    _controller->set_receiver_auto_reenable(true);
+    //_controller->set_receiver_auto_reenable(true);
     
     // poll and check for error
     while (true)
@@ -276,42 +276,6 @@ dwm_com_error_t DWMRangingDrone::do_report_state(DW1000Time& esp_init_rx_ts, DW1
 
     return SUCCESS;
 }
-
-
-/**
- * @brief Get the distance to a given anchor.
- * 
- * @param anchor_addr Address of current anchor.
- * @param distance Pointer to write distance to.
- * @return dwm_com_error_t 
- */
-//dwm_com_error_t DWMRanging::get_distance_to_anchor(uint16_t anchor_addr, double* distance)
-//{
-//    // variables in method scope
-//    DW1000Time init_tx_ts, ack_rx_ts, fin_tx_ts;
-//    DW1000Time esp_init_rx_ts, esp_resp_tx_ts, esp_fin_rx_ts;
-//
-//    // go through state machine state by state and do the error handling accordingly
-//    if (do_init_state(init_tx_ts, anchor_addr) != SUCCESS)
-//        return dwm_com_error_t::ERROR;
-//
-//    if (do_response_ack_state(ack_rx_ts) != SUCCESS)
-//        return dwm_com_error_t::ERROR;
-//
-//    if (do_final_state(fin_tx_ts, anchor_addr) != SUCCESS)
-//        return dwm_com_error_t::ERROR;
-//    
-//    if (do_report_state(esp_init_rx_ts, esp_resp_tx_ts, esp_fin_rx_ts) != SUCCESS)
-//        return dwm_com_error_t::ERROR;
-//
-//    // return distance procedurally
-//    *distance = timestamps2distance(
-//        init_tx_ts, ack_rx_ts, fin_tx_ts,
-//        esp_init_rx_ts, esp_resp_tx_ts, esp_fin_rx_ts
-//    );
-//
-//    return dwm_com_error_t::SUCCESS;
-//}
 
 
 /**

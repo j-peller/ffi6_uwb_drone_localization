@@ -553,11 +553,11 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t ti
             }
                 
             /* Drain remaining events without status checks */
-            //if (gpiod_line_event_wait(_irq_line, &timeout_ts) > 0) {
-            //    fprintf(stdout, "Draining remaining events\n");
-            //    while(gpiod_line_event_read(_irq_line, &event) > 0) {
-            //    }
-            //}
+            if (gpiod_line_event_wait(_irq_line, &timeout_ts) > 0) {
+                fprintf(stdout, "Draining remaining events\n");
+                while(gpiod_line_event_read(_irq_line, &event) > 0) {
+                }
+            }
                     
             return SUCCESS;
         }
@@ -814,6 +814,8 @@ dwm_com_error_t DWMController::send_antenna_calibration_value(uint16_t value)
     /* copy our measured distance to payload buffer */
     memcpy(msg.payload.result.distance, &value, sizeof(uint16_t));
 
+    fprintf(stdout, "Sending result message: %d\n", value);
+
     /* write our payload to transmit buffer */
     ret = write_transmission_data((uint8_t*)&msg, sizeof(twr_message_t));
     if (ret != SUCCESS) {
@@ -847,6 +849,7 @@ dwm_com_error_t DWMController::wait_for_antenna_calibration_value(uint16_t* valu
 
     /* Start Receiver */
     start_receiving();
+    set_receiver_auto_reenable(true);
 
     /* Poll for data... */
     while (true)
@@ -870,11 +873,12 @@ dwm_com_error_t DWMController::wait_for_antenna_calibration_value(uint16_t* valu
                 break;
         }
     }
+    set_receiver_auto_reenable(false);
 
 
     /* copy distance data back to user */
     memcpy(value, result_return->payload.result.distance, sizeof(uint16_t));
-    fprintf(stdout, "Got result message: %d\n", value);
+    fprintf(stdout, "Got result message: %d\n", *value);
 
     /* cleanup */
     delete result_return;

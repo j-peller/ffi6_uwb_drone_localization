@@ -261,7 +261,7 @@ dwm_com_error_t DWMRangingAnchor::run_state_machine()
                 break;
 
             case RangingState::COMPLETE:
-                break;
+                return SUCCESS;
         }
 
         fprintf(stdout, "Cur State: %d\n", (int)state);
@@ -286,6 +286,7 @@ dwm_com_error_t DWMRangingAnchor::run_state_machine()
 dwm_com_error_t DWMRangingAnchor::calibrate_antenna_delay(int max_iterations)
 {
     double antd = INITIAL_ANTENNA_DELAY; // Initial guess for TX and RX antenna delay
+    uint16_t tmp = 0;
 
     /* TODO: Adjust RX Power Level for antenna Calibration */
 
@@ -304,7 +305,8 @@ dwm_com_error_t DWMRangingAnchor::calibrate_antenna_delay(int max_iterations)
         }
         
         /* wait for correction value from drone */
-        _controller->wait_for_antenna_calibration_value((uint16_t*)&antd);
+        _controller->wait_for_antenna_calibration_value(&tmp);
+        antd = (double)tmp; // convert to meters
         printf("Iteration %d: Delay = %.2f units\n", i + 1, antd);
         i++;
     }

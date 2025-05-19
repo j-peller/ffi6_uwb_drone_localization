@@ -83,12 +83,12 @@ int main() {
 
     switch (ROLE) {
         case dwm1000_role_t::DRONE:
-            //run_drone(controller);
-            run_drone_calibrate(controller);
+            run_drone(controller);
+            //run_drone_calibrate(controller);
             break;
         case dwm1000_role_t::ANCHOR:
-            //run_anchor(controller);
-            run_anchor_calibrate(controller);
+            run_anchor(controller);
+            //run_anchor_calibrate(controller);
             break;
     }
 

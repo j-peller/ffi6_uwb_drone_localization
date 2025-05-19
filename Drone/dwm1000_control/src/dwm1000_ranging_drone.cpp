@@ -323,7 +323,7 @@ dwm_com_error_t DWMRangingDrone::get_distance_to_anchor(uint16_t anchor_addr, do
                 break;
 
             case RangingState::COMPLETE:
-                break;
+                return SUCCESS;
         }
 
         if (timeout_occurred) {
@@ -350,6 +350,7 @@ dwm_com_error_t DWMRangingDrone::get_distance_to_anchor(uint16_t anchor_addr, do
  */
 dwm_com_error_t DWMRangingDrone::calibrate_antenna_delay(double known_distance_m, double allowed_error_m, int max_iterations)
 {
+    dwm_com_error_t ret = SUCCESS;
     double antd = INITIAL_ANTENNA_DELAY; // Initial guess for TX and RX antenna delay
     double current_distance_m = 0.0f;
 
@@ -362,8 +363,8 @@ dwm_com_error_t DWMRangingDrone::calibrate_antenna_delay(double known_distance_m
         _controller->set_rx_antenna_delay((uint16_t)(antd + 0.5f));
 
         /* Perform ranging with new antenna delay */
-        get_distance_to_anchor(ANCHOR_1, &current_distance_m);
-        if (current_distance_m <= 0.0) {
+        ret = get_distance_to_anchor(ANCHOR_1, &current_distance_m);
+        if (ret != SUCCESS) {
             continue; // Skip this iteration if the distance is invalid
         }
 
@@ -383,11 +384,16 @@ dwm_com_error_t DWMRangingDrone::calibrate_antenna_delay(double known_distance_m
         antd += (delay_units / 2.0f); // Adjust the antenna delay based on the error
 
         /* */
-        if (antd < 0) antd = 0;
+        if (antd < 0.0) antd = 0.0;
         else if (antd > 0xFFFF) antd = 0xFFFF;
+
+        /* Wait */
+        busywait_nanoseconds(100000000);
 
         /* Send calculated antenna delay to anchor device */
         _controller->send_antenna_calibration_value((uint16_t)(antd));
+        
+        busywait_nanoseconds(100000000);
         
         printf("Iteration %d: Delay = %.2f units, Measured = %.4f m, Error = %.4f m, Correction = %.2f units\n",
                i + 1, antd, current_distance_m, error_m, delay_units);

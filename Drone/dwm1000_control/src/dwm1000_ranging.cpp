@@ -65,6 +65,8 @@ DWMRanging* DWMRanging::create_instance(DWMController* ctrl)
     }
 
     controller->setIRQMask(SYS_MASK_MRXDFR | SYS_MASK_MTXFRS);
+    controller->set_tx_antenna_delay(INITIAL_ANTENNA_DELAY);
+    controller->set_rx_antenna_delay(INITIAL_ANTENNA_DELAY);
     busywait_nanoseconds(1000000);  //< Wait 1ms
 
     /* Depending on wether its an Anchor or TAG (Drone) return specific Ranging object */

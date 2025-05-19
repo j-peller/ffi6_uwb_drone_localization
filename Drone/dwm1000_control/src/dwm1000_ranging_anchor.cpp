@@ -278,3 +278,38 @@ dwm_com_error_t DWMRangingAnchor::run_state_machine()
 
     return dwm_com_error_t::SUCCESS;
 }
+
+
+/**
+ * 
+ */
+dwm_com_error_t DWMRangingAnchor::calibrate_antenna_delay(int max_iterations)
+{
+    double antd = INITIAL_ANTENNA_DELAY; // Initial guess for TX and RX antenna delay
+
+    /* TODO: Adjust RX Power Level for antenna Calibration */
+
+    int i = 0;
+    while (i < max_iterations) {
+        /* Set the current antenna delay */
+        _controller->set_tx_antenna_delay((uint16_t)(antd + 0.5f));
+        _controller->set_rx_antenna_delay((uint16_t)(antd + 0.5f));
+
+        /* Run state machine for ranging once */
+        while (true) {
+            if (run_state_machine() == SUCCESS) {
+                /* we got successfull ranging skip to receiving correction value */
+                break;
+            }
+        }
+        
+        /* wait for correction value from drone */
+        _controller->wait_for_antenna_calibration_value((uint16_t*)&antd);
+        printf("Iteration %d: Delay = %.2f units\n", i + 1, antd);
+        i++;
+    }
+
+    printf("Calibration failed to converge after %d iterations.\n", max_iterations);
+
+    return ERROR;
+}

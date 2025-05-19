@@ -33,6 +33,7 @@ class DWMRanging {
 public:
     static DWMRanging* create_instance(DWMController* controller);
     virtual ~DWMRanging() = 0;
+    
 
 protected:
     DWMRanging();
@@ -68,6 +69,8 @@ public:
     /* Ranging */
     dwm_com_error_t get_distances_to_anchors(distances* distances);
     dwm_com_error_t get_distance_to_anchor(uint16_t anchor_addr, double* distance);
+    
+    /* Calibration */
     dwm_com_error_t calibrate_antenna_delay(double known_distance_m, double allowed_error_m, int max_iterations);
 
 private:
@@ -104,6 +107,9 @@ public:
 
     /* Ranging */
     dwm_com_error_t run_state_machine();
+    
+    /* Calibration */
+    dwm_com_error_t calibrate_antenna_delay(int max_iterations);
 
 private:
     DWMRangingAnchor() : DWMRanging() {};

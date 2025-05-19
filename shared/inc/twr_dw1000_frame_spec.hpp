@@ -19,6 +19,7 @@ typedef enum : uint8_t {
     TWR_MSG_TYPE_RESPONSE = 0x02,
     TWR_MSG_TYPE_FINAL    = 0x03,
     TWR_MSG_TYPE_REPORT   = 0x04,
+    TWR_MSG_TYPE_RESULT   = 0x05,
 } twr_msg_type_t;
 
 #pragma pack(push, 1)
@@ -79,6 +80,15 @@ typedef struct {
 
 
 /**
+ * @brief TWR result message sent by drone to the anchor during antenna calibration
+ */
+typedef struct {
+    uint8_t type;
+    uint8_t distance[2]; /* Antenna delay correction value */
+} twr_result_message_t;
+
+
+/**
  * @brief TWR message frame used by the Drone and Anchor
  */
 typedef struct {
@@ -88,6 +98,7 @@ typedef struct {
         twr_response_message_t  response;
         twr_final_message_t     final;
         twr_report_message_t    report;
+        twr_result_message_t    result;
     } payload; /* Frame payload */
 } twr_message_t;
 

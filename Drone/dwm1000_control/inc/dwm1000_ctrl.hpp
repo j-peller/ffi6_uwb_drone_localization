@@ -147,6 +147,7 @@ public:
     /* Transmission */
     dwm_com_error_t write_transmission_data(uint8_t* data, uint8_t len);
     void start_transmission();
+    void start_transmission(bool wait4resp);
     void get_tx_timestamp(DW1000Time& time);
 
     /* Receiving */
@@ -181,7 +182,8 @@ public:
     /* Setters */
     void set_device_short_addr(uint16_t short_addr);
     void set_device_pan_id(uint16_t pan_id);
-    void set_antenna_delay(uint16_t delay);
+    void set_tx_antenna_delay(uint16_t delay);
+    void set_rx_antenna_delay(uint16_t delay);
 
     /* Getters */
     void get_device_id(uint32_t* device_id);
@@ -193,6 +195,10 @@ public:
     /* Testing Functions */
     dwm_com_error_t test_transmission_timestamp(DW1000Time& tx_time, uint8_t* payload);
     dwm_com_error_t test_receiving_timestamp(DW1000Time& rx_time);
+
+    /* Calibration Fuckery */
+    dwm_com_error_t send_antenna_calibration_value(uint16_t delay);
+    dwm_com_error_t wait_for_antenna_calibration_value(uint16_t* delay);
     
     
     void setIRQMask(uint32_t irq_mask);

@@ -108,3 +108,5 @@ DWMRanging::DWMRanging(DWMController* controller)
 
     _controller = controller;
 }
+
+

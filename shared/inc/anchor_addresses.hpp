@@ -17,6 +17,7 @@
 #define ANCHOR_2    0xCAFE
 #define ANCHOR_3    0xDEAD
 #define ANCHOR_4    0xBEEF
+#define BROADCAST   0xFFFF
 
 /* Short Address of the UWB Master*/
 #define MASTER      0xB00B

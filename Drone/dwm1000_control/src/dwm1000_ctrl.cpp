@@ -373,6 +373,31 @@ void DWMController::start_transmission() {
 
 
 /**
+ * @brief Start receiving data from the DWM1000
+ * 
+ *        This method sets the TXSTRT bit and Wait4Resp in the SYS_CTRL register,
+ *        depending on wait4resp bool provided by user which commands the DW1000
+ *        to begin transaction and automatically switching to reception when tx is done.
+ */
+void DWMController::start_transmission(bool wait4resp) {
+
+    /* Idle mode required to start new transmission */
+    this->forceIdle();
+
+    /* clear tx status registers */
+    clearStatusEvent(SYS_STATUS_ALL_TX);
+
+    /* WAIT4RESP maybe an option here to enable the receiver immediatly after transmission completed */
+    /* Start Transmitter */
+    if (wait4resp) {
+        writeBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, SYS_CTRL_TXSTRT | SYS_CTRL_WAIT4RESP);
+    } else {
+        writeBytes(SYS_CTRL_ID, NO_SUB_ADDRESS, SYS_CTRL_TXSTRT);
+    }
+}
+
+
+/**
  * @brief Get the 40-bit full adjusted TX timestamp from the DW1000
  * @param time Reference to the DW1000Time object to store the timestamp
  */
@@ -626,9 +651,18 @@ void DWMController::set_device_pan_id(uint16_t pan_id)
 /**
  * 
  */
-void DWMController::set_antenna_delay(uint16_t delay)
+void DWMController::set_tx_antenna_delay(uint16_t delay)
 {
     writeBytes(TX_ANTD_ID, NO_SUB_ADDRESS, (uint8_t*)&delay, sizeof(uint16_t));
+}
+
+
+/**
+ * 
+ */
+void DWMController::set_rx_antenna_delay(uint16_t delay)
+{
+    writeBytes(LDE_IF_ID, LDE_RXANTD_OFFSET, (uint8_t*)&delay, sizeof(uint16_t));
 }
 
 
@@ -750,6 +784,100 @@ dwm_com_error_t DWMController::test_receiving_timestamp(DW1000Time& rx_time)
 
     /* cleanup */
     delete msg;
+
+    return ret;
+}
+
+
+/**
+ * 
+ */
+dwm_com_error_t DWMController::send_antenna_calibration_value(uint16_t value)
+{
+    dwm_com_error_t ret = SUCCESS;
+
+    twr_message_t msg = {
+        .header = (twr_frame_header_t) {
+            .frameCtrl = {0x41, 0x88},
+            .seqNum = 0x00,
+            .panID = {0xCA, 0xDE},
+            .destAddr = { BROADCAST & 0xff, BROADCAST >> 8 },
+            .srcAddr = { MASTER & 0xff, MASTER >> 8 }
+        },
+        .payload = {
+            .result = {
+                .type = twr_msg_type_t::TWR_MSG_TYPE_RESULT,
+            }
+        }
+    };
+
+    /* copy our measured distance to payload buffer */
+    memcpy(msg.payload.result.distance, &value, sizeof(uint16_t));
+
+    /* write our payload to transmit buffer */
+    ret = write_transmission_data((uint8_t*)&msg, sizeof(twr_message_t));
+    if (ret != SUCCESS) {
+        /* Error handling... */
+        return ret;
+    }
+
+    /* start transmission of frame without enabling receiver */
+    start_transmission(false);
+
+    /* wait until our data has been successfully transmitted */
+    ret = poll_tx_status();
+    if (ret != SUCCESS) {
+        /* Error handling... */
+        return ret;
+    }
+
+    /* we done. */
+    return ret;
+}
+
+
+/**
+ * 
+ */
+dwm_com_error_t DWMController::wait_for_antenna_calibration_value(uint16_t* value)
+{
+    uint16_t ack_len = 0;
+    twr_message_t* result_return = NULL;
+    dwm_com_error_t ret = SUCCESS;
+
+    /* Start Receiver */
+    start_receiving();
+
+    /* Poll for data... */
+    while (true)
+    {
+        /* Poll for the reception of a packet - maybe use different timeout with poll_status_mask() directly */
+        ret = poll_status_bit(SYS_STATUS_RXDFR, 500000000);
+        if (ret != SUCCESS)
+        {
+            //waitOutError();
+            //continue;
+            return ret;
+        } else {
+            ret = read_received_data(&ack_len, (uint8_t**)&result_return);
+            if (ret != SUCCESS) {
+                /* Error handling */
+                continue;
+            }
+
+            /* Check if we got expected message type and only escape if valid */
+            if ( ack_len == sizeof(twr_message_t) && result_return->payload.result.type == TWR_MSG_TYPE_RESULT)
+                break;
+        }
+    }
+
+
+    /* copy distance data back to user */
+    memcpy(value, result_return->payload.result.distance, sizeof(uint16_t));
+    fprintf(stdout, "Got result message: %d\n", value);
+
+    /* cleanup */
+    delete result_return;
 
     return ret;
 }

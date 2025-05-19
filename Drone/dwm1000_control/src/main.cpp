@@ -11,7 +11,9 @@ const dwm1000_role_t ROLE = dwm1000_role_t::DRONE;
 
 /*  */
 void run_drone(DWMController* controller);
+void run_drone_calibrate(DWMController* controller);
 void run_anchor(DWMController* controller);
+void run_anchor_calibrate(DWMController* controller);
 
 /**
  * 
@@ -81,10 +83,12 @@ int main() {
 
     switch (ROLE) {
         case dwm1000_role_t::DRONE:
-            run_drone(controller);
+            //run_drone(controller);
+            run_drone_calibrate(controller);
             break;
         case dwm1000_role_t::ANCHOR:
-            run_anchor(controller);
+            //run_anchor(controller);
+            run_anchor_calibrate(controller);
             break;
     }
 
@@ -106,6 +110,22 @@ void run_drone(DWMController* controller) {
     delete tag;
 }
 
+void run_drone_calibrate(DWMController* controller) {
+    fprintf(stdout, "Running as Drone for calibration\n");
+    DWMRangingDrone* tag = dynamic_cast<DWMRangingDrone*>(DWMRanging::create_instance(controller));
+    if (tag == NULL) {
+        fprintf(stderr, "Failed to create DWMRanging instance\n");
+        return;
+    }
+
+    double distance = 0.0;
+    tag->calibrate_antenna_delay(1.0, 0.15, 50);
+    tag->get_distance_to_anchor(ANCHOR_1, &distance);
+    fprintf(stdout, "Got distances: %lfm\n", distance);
+
+    delete tag;
+}
+
 void run_anchor(DWMController* controller) {
     fprintf(stdout, "Running as Anchor\n");
     DWMRangingAnchor* anchor = dynamic_cast<DWMRangingAnchor*>(DWMRanging::create_instance(controller));
@@ -119,6 +139,19 @@ void run_anchor(DWMController* controller) {
             fprintf(stdout, "Successfull Ranging Done\n");
         }
     }
+
+    delete anchor;
+}
+
+void run_anchor_calibrate(DWMController* controller) {
+    fprintf(stdout, "Running as Anchor for calibration\n");
+    DWMRangingAnchor* anchor = dynamic_cast<DWMRangingAnchor*>(DWMRanging::create_instance(controller));
+    if (anchor == NULL) {
+        fprintf(stderr, "Failed to create DWMRanging instance\n");
+        return;
+    }
+
+    anchor->calibrate_antenna_delay(50);
 
     delete anchor;
 }

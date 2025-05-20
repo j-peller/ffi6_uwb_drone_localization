@@ -34,6 +34,7 @@ typedef enum {
  */
 typedef struct {
     dwm1000_role_t  role;
+    uint16_t        short_addr;
     const char*     spi_dev;
     uint32_t        spi_baudrate;
     uint8_t         spi_bits_per_word;
@@ -143,6 +144,7 @@ public:
 
     /* DW1000 Configuration */
     dwm_com_error_t set_mode(dw1000_mode_t mode);
+    void enable_frame_filtering(bool enable);
 
     /* Transmission */
     dwm_com_error_t write_transmission_data(uint8_t* data, uint8_t len);

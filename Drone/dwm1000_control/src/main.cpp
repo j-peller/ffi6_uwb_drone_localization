@@ -21,6 +21,7 @@ void run_anchor_calibrate(DWMController* controller);
 int main() {
     dw1000_dev_instance_t device = {
         .role = ROLE,
+        .short_addr = (ROLE == dwm1000_role_t::DRONE) ? MASTER : ANCHOR_1,
         .spi_dev = "/dev/spidev0.0",
         .spi_baudrate = SLOW_SPI, //< Start mit 2MHz clock and ramp up after init
         .spi_bits_per_word = 8,

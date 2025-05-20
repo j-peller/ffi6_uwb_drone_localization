@@ -130,10 +130,10 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
     fprintf(stdout, "DWM1000 detected with ID: 0x%08X\n", device_id);
 
     /* Test SPI Write - and Read Back Value */
-    instance->set_device_short_addr(MASTER);
+    instance->set_device_short_addr(device->short_addr);
     uint16_t short_addr_read_back = 0;
     instance->get_device_short_addr(&short_addr_read_back);
-    if (short_addr_read_back != MASTER) {
+    if (short_addr_read_back != device->short_addr) {
         fprintf(stderr, "DWM1000 returned invalid Short Address: 0x%04X\n", short_addr_read_back);
         perror("DWM1000 not detected or SPI not working");
         delete instance;
@@ -189,10 +189,10 @@ dwm_com_error_t DWMController::set_mode(dw1000_mode_t mode)
     uint32_t sys_cfg = 0;
     readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
 
-    //sys_cfg |= SYS_CFG_FFE;         //< Enable Frame Filtering. This requires SHORT_ADDR to be set beforehand.
-    //sys_cfg |= SYS_CFG_FFAD;        //< Allow Data Frame
-    sys_cfg &= ~SYS_CFG_FFE;
-    sys_cfg &= ~SYS_CFG_FFAD;
+    //sys_cfg |= SYS_CFG_FFE;         //< Enable Frame Filtering. This requires SHORT_ADDR to be set beforehand - shoud be done later
+    sys_cfg |= SYS_CFG_FFAD;        //< Allow Data Frame
+    //sys_cfg &= ~SYS_CFG_FFE;
+    //sys_cfg &= ~SYS_CFG_FFAD;
     sys_cfg |= SYS_CFG_PHR_MODE_00; //< Standard Frame mode IEEE 802.15.4 compliant
     sys_cfg |= mode.bitrate_config.rxm110k;
 
@@ -316,6 +316,25 @@ dwm_com_error_t DWMController::set_mode(dw1000_mode_t mode)
 
     return SUCCESS;
 }
+
+
+/**
+ * 
+ */
+void DWMController::enable_frame_filtering(bool enable)
+{
+    uint32_t sys_cfg = 0;
+    readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
+
+    if (enable) {
+        sys_cfg |= SYS_CFG_FFE;         //< Enable Frame Filtering. This requires SHORT_ADDR to be set beforehand - shoud be done later
+    } else {
+        sys_cfg &= ~SYS_CFG_FFE;
+    }
+
+    writeBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
+}
+
 
 /**
  * @brief Write frame data to the TX buffer of the DW1000 and set the TX frame control register accordingly
@@ -452,7 +471,7 @@ dwm_com_error_t DWMController::read_received_data(uint16_t* len_out, uint8_t** d
         fprintf(stderr, "Invalid length: %d\n", len);
         return ERROR;
     }
-    fprintf(stdout, "Received data with length: %d\n", len);
+    //fprintf(stdout, "Received data with length: %d\n", len);
 
     uint8_t* rx_data = new uint8_t[len];
     if (rx_data == NULL) {
@@ -467,7 +486,7 @@ dwm_com_error_t DWMController::read_received_data(uint16_t* len_out, uint8_t** d
     *len_out = len;
     *data_out = rx_data;
 
-    /* delte length information in RX_FINFO register */
+    /* delete length information in RX_FINFO register */
     deleteReceivedDataLength();
 
     /* return received data */

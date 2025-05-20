@@ -363,25 +363,34 @@ dwm_com_error_t DWMRangingDrone::calibrate_antenna_delay(double known_distance_m
         _controller->set_rx_antenna_delay((uint16_t)(antd + 0.5f));
 
         /* Perform ranging with new antenna delay */
-        ret = get_distance_to_anchor(ANCHOR_1, &current_distance_m);
-        if (ret != SUCCESS) {
-            continue; // Skip this iteration if the distance is invalid
+        int k = 0;
+        double sum_distance_m = 0.0f;
+        while (k < 10) {
+            ret = get_distance_to_anchor(ANCHOR_1, &current_distance_m);
+            if (ret != SUCCESS) {
+                continue; // Skip this iteration if the distance is invalid
+            }
+
+            /* Accumulate the distance */
+            sum_distance_m += current_distance_m;
+
+            k++;
         }
 
         /* Is current measurement good enough? */
-        double error_m = current_distance_m - known_distance_m;
+        double error_m = ( sum_distance_m / 5.0 ) - known_distance_m;
         if (fabs(error_m) <= allowed_error_m) {
             printf("Converged at iteration %d: Delay = %.2f (Measured: %.4f m, Error: %.4f m)\n",
-                   i + 1, antd, current_distance_m, error_m);
+                   i + 1, antd, sum_distance_m / 5.0, error_m);
             return SUCCESS;
-            
         }
 
         /* convert range error to time error */
         double time_error_us = (error_m / DW1000Time::SPEED_OF_LIGHT_M_US); // Convert to microseconds
         double delay_units = time_error_us * DW1000Time::DW1000_TIME_UNITS_PER_US;
 
-        antd += (delay_units / 2.0f); // Adjust the antenna delay based on the error
+        /* devide by 4.0 because we adjust for tx and rx antenna on both drone and anchor */
+        antd += (delay_units / 4.0f); // Adjust the antenna delay based on the error
 
         /* */
         if (antd < 0.0) antd = 0.0;
@@ -396,7 +405,7 @@ dwm_com_error_t DWMRangingDrone::calibrate_antenna_delay(double known_distance_m
         busywait_nanoseconds(100000000);
         
         printf("Iteration %d: Delay = %.2f units, Measured = %.4f m, Error = %.4f m, Correction = %.2f units\n",
-               i + 1, antd, current_distance_m, error_m, delay_units);
+               i + 1, antd, sum_distance_m / 5.0, error_m, delay_units);
         
         i++;
     }

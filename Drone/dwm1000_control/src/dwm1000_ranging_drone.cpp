@@ -298,43 +298,56 @@ dwm_com_error_t DWMRangingDrone::get_distance_to_anchor(uint16_t anchor_addr, do
             case RangingState::INIT:
                 fprintf(stdout, "INIT\n");
                 ret = do_init_state(t_sp, anchor_addr);
-                HANDLE_STATE_TRANSITION(ret, RangingState::RESP_ACK, RangingState::INIT, timeout_occurred);
+                //HANDLE_STATE_TRANSITION(ret, RangingState::RESP_ACK, RangingState::INIT, timeout_occurred);
+                if (ret == SUCCESS)
+                    state = RangingState::RESP_ACK;
+                else
+                    return ret;
                 break;
 
             case RangingState::RESP_ACK:
                 fprintf(stdout, "RESP\n");
                 ret = do_response_ack_state(t_ra);
-                HANDLE_STATE_TRANSITION(ret, RangingState::FINAL, RangingState::INIT, timeout_occurred);
-                retries = 0;
+                //HANDLE_STATE_TRANSITION(ret, RangingState::FINAL, RangingState::INIT, timeout_occurred);
+                if (ret == SUCCESS)
+                    state = RangingState::FINAL;
+                else
+                    return ret;
                 break;
 
             case RangingState::FINAL:
                 fprintf(stdout, "FINAL\n");
                 ret = do_final_state(t_sf, anchor_addr);
-                HANDLE_STATE_TRANSITION(ret, RangingState::REPORT, RangingState::INIT, timeout_occurred);
-                retries = 0;
+                //HANDLE_STATE_TRANSITION(ret, RangingState::REPORT, RangingState::INIT, timeout_occurred);
+                if (ret == SUCCESS)
+                    state = RangingState::REPORT;
+                else
+                    return ret;
                 break;
 
             case RangingState::REPORT:
                 fprintf(stdout, "REPORT\n");
                 ret = do_report_state(t_rp, t_sa, t_rf);
-                HANDLE_STATE_TRANSITION(ret, RangingState::COMPLETE, RangingState::INIT, timeout_occurred);
-                retries = 0;
+                //HANDLE_STATE_TRANSITION(ret, RangingState::COMPLETE, RangingState::INIT, timeout_occurred);
+                if (ret == SUCCESS)
+                    state = RangingState::COMPLETE;
+                else
+                    return ret;
                 break;
 
             case RangingState::COMPLETE:
                 return SUCCESS;
         }
 
-        if (timeout_occurred) {
-            retries++;
-            timeout_occurred = false;
-            if (retries >= MAX_RETRY_ON_FAILURE) {
-                fprintf(stdout, "Max retries reached. Exiting...\n");
-                return dwm_com_error_t::ERROR;
-            }
-            //waitOutError();
-        }
+        //if (timeout_occurred) {
+        //    retries++;
+        //    timeout_occurred = false;
+        //    if (retries >= MAX_RETRY_ON_FAILURE) {
+        //        fprintf(stdout, "Max retries reached. Exiting...\n");
+        //        return dwm_com_error_t::ERROR;
+        //    }
+        //    //waitOutError();
+        //}
     }
 
     *distance = timestamps2distance(
@@ -365,7 +378,7 @@ dwm_com_error_t DWMRangingDrone::calibrate_antenna_delay(double known_distance_m
         /* Perform ranging with new antenna delay */
         int k = 0;
         double sum_distance_m = 0.0f;
-        while (k < 10) {
+        while (k < 5) {
             ret = get_distance_to_anchor(ANCHOR_1, &current_distance_m);
             if (ret != SUCCESS) {
                 continue; // Skip this iteration if the distance is invalid

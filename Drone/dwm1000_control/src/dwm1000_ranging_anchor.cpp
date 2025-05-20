@@ -227,7 +227,7 @@ dwm_com_error_t DWMRangingAnchor::run_state_machine()
     dwm_com_error_t ret = SUCCESS;
 
     // variables in method scope
-    bool timeout_occurred = false;
+    //bool timeout_occurred = false;
 
     while (state != RangingState::COMPLETE) {
 
@@ -235,29 +235,39 @@ dwm_com_error_t DWMRangingAnchor::run_state_machine()
             case RangingState::INIT:
                 fprintf(stdout, "INIT\n");
                 ret = do_init_state();
-                HANDLE_STATE_TRANSITION(ret, RangingState::RESP_ACK, RangingState::INIT, timeout_occurred);
-                retries = 0;
+                //HANDLE_STATE_TRANSITION(ret, RangingState::RESP_ACK, RangingState::INIT, timeout_occurred);
+                if (ret == SUCCESS)
+                    state = RangingState::RESP_ACK;
                 break;
 
             case RangingState::RESP_ACK:
                 fprintf(stdout, "RESP\n");
                 ret = do_response_ack_state(ANCHOR_1);
-                HANDLE_STATE_TRANSITION(ret, RangingState::FINAL, RangingState::INIT, timeout_occurred);
-                retries = 0;
+                //HANDLE_STATE_TRANSITION(ret, RangingState::FINAL, RangingState::INIT, timeout_occurred);
+                if (ret == SUCCESS)
+                    state = RangingState::FINAL;
+                else
+                    return ret;
                 break;
 
             case RangingState::FINAL:
                 fprintf(stdout, "FINAL\n");
                 ret = do_final_state();
-                HANDLE_STATE_TRANSITION(ret, RangingState::REPORT, RangingState::INIT, timeout_occurred);
-                retries = 0;
+                //HANDLE_STATE_TRANSITION(ret, RangingState::REPORT, RangingState::INIT, timeout_occurred);
+                if (ret == SUCCESS)
+                    state = RangingState::REPORT;
+                else
+                    return ret;
                 break;
 
             case RangingState::REPORT:
                 fprintf(stdout, "REPORT\n");
                 ret = do_report_state(ANCHOR_1);
-                HANDLE_STATE_TRANSITION(ret, RangingState::COMPLETE, RangingState::INIT, timeout_occurred);
-                retries = 0;
+                //HANDLE_STATE_TRANSITION(ret, RangingState::COMPLETE, RangingState::INIT, timeout_occurred);
+                if (ret == SUCCESS)
+                    state = RangingState::COMPLETE;
+                else
+                    return ret;
                 break;
 
             case RangingState::COMPLETE:
@@ -265,15 +275,15 @@ dwm_com_error_t DWMRangingAnchor::run_state_machine()
         }
 
         fprintf(stdout, "Cur State: %d\n", (int)state);
-        if (timeout_occurred) {
-            retries++;
-            timeout_occurred = false;
-            if (retries >= MAX_RETRY_ON_FAILURE) {
-                fprintf(stdout, "Max retries reached. Exiting...\n");
-                return dwm_com_error_t::ERROR;
-            }
-            //waitOutError();
-        }
+        //if (timeout_occurred) {
+        //    retries++;
+        //    timeout_occurred = false;
+        //    if (retries >= MAX_RETRY_ON_FAILURE) {
+        //        fprintf(stdout, "Max retries reached. Exiting...\n");
+        //        return dwm_com_error_t::ERROR;
+        //    }
+        //    //waitOutError();
+        //}
     }
 
     return dwm_com_error_t::SUCCESS;

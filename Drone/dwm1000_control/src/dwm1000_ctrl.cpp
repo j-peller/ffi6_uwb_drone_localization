@@ -190,9 +190,9 @@ dwm_com_error_t DWMController::set_mode(dw1000_mode_t mode)
     readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
 
     //sys_cfg |= SYS_CFG_FFE;         //< Enable Frame Filtering. This requires SHORT_ADDR to be set beforehand - shoud be done later
-    sys_cfg |= SYS_CFG_FFAD;        //< Allow Data Frame
-    //sys_cfg &= ~SYS_CFG_FFE;
-    //sys_cfg &= ~SYS_CFG_FFAD;
+    //sys_cfg |= SYS_CFG_FFAD;        //< Allow Data Frame
+    sys_cfg &= ~SYS_CFG_FFE;
+    sys_cfg &= ~SYS_CFG_FFAD;
     sys_cfg |= SYS_CFG_PHR_MODE_00; //< Standard Frame mode IEEE 802.15.4 compliant
     sys_cfg |= mode.bitrate_config.rxm110k;
 
@@ -572,11 +572,11 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t ti
             }
                 
             /* Drain remaining events without status checks */
-            if (gpiod_line_event_wait(_irq_line, &timeout_ts) > 0) {
-                fprintf(stdout, "Draining remaining events\n");
-                while(gpiod_line_event_read(_irq_line, &event) > 0) {
-                }
-            }
+            //if (gpiod_line_event_wait(_irq_line, &timeout_ts) > 0) {
+            //    fprintf(stdout, "Draining remaining events\n");
+            //    while(gpiod_line_event_read(_irq_line, &event) > 0) {
+            //    }
+            //}
                     
             return SUCCESS;
         }

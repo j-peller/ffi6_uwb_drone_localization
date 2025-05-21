@@ -67,6 +67,8 @@ TEST_F(RangingTest, RangingStatistics) {
         
         distances.push_back(dist);
 
+        usleep(250000);
+
     }
 
     // Write to output file

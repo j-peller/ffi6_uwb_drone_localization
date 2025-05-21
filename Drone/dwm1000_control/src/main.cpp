@@ -84,12 +84,10 @@ int main() {
 
     switch (ROLE) {
         case dwm1000_role_t::DRONE:
-            run_drone(controller);
-            //run_drone_calibrate(controller);
+            (getenv_int("DWM1000_CALIBRATE") == 1) ? run_drone_calibrate(controller) : run_drone(controller);
             break;
         case dwm1000_role_t::ANCHOR:
-            run_anchor(controller);
-            //run_anchor_calibrate(controller);
+            (getenv_int("DWM1000_CALIBRATE") == 1) ? run_anchor_calibrate(controller) : run_anchor(controller);
             break;
     }
 
@@ -120,7 +118,7 @@ void run_drone_calibrate(DWMController* controller) {
     }
 
     double distance = 0.0;
-    tag->calibrate_antenna_delay(1.0, 0.15, 50);
+    tag->calibrate_antenna_delay(5.0, 0.15, 50);
     tag->get_distance_to_anchor(ANCHOR_1, &distance);
     fprintf(stdout, "Got distances: %lfm\n", distance);
 

@@ -22,6 +22,7 @@ int main() {
     dw1000_dev_instance_t device = {
         .role = ROLE,
         .short_addr = (ROLE == dwm1000_role_t::DRONE) ? MASTER : ANCHOR_1,
+        .long_addr = (ROLE == dwm1000_role_t::DRONE) ? MASTER_LONG : ANCHOR_1_LONG,
         .spi_dev = "/dev/spidev0.0",
         .spi_baudrate = SLOW_SPI, //< Start mit 2MHz clock and ramp up after init
         .spi_bits_per_word = 8,
@@ -37,12 +38,11 @@ int main() {
     }
 
     /* Reset must be performed */
-    //controller->soft_reset();
     //controller->set_mode(JOPEL110);
     ///* Interrupt Mask must match Status Mask */
     //controller->setIRQMask(SYS_MASK_MRXDFR | SYS_MASK_MTXFRS);
+    //controller->enable_frame_filtering(SYS_CFG_FFAD);
     //usleep(1000000);
-
 
     //DW1000Time rx_time;
     ///* after reception it will clear its state and go to idle */
@@ -56,29 +56,15 @@ int main() {
     //}
 
     //DW1000Time tx_time;
-    //twr_message_t msg = {
-    //        .header = {
-    //            .frameCtrl = {0x41, 0x88},
-    //            .seqNum = 0x00,
-    //            .panID = {0xCA, 0xDE},
-    //            .destAddr = { 0xFE, 0xAF },
-    //            .srcAddr = { MASTER & 0xff, MASTER >> 8 }
-    //        },
-    //        .payload = { .report = {
-    //            .type = twr_msg_type_t::TWR_MSG_TYPE_REPORT,
-    //            .finalRx = {0x12, 0x34, 0x56, 0x78, 0x9A}}}
-    //};
+    //uint8_t msg[] = {0x41, 0x88, 0x00, 0xCA, 0xDE, 0xFF, 0xFF, 0x0B, 0xB0};
 
     //uint64_t ts = 0;
-    //while(1) {
-    //    ts++;
-    //    memcpy(msg.payload.report.finalRx, &ts, 5);
-    //    if (controller->test_transmission_timestamp(tx_time, (uint8_t*)&msg) == SUCCESS) {
-    //        fprintf(stdout, "TX Timestamp: %lu\n", tx_time.get_timestamp());
-    //    } else {
-    //        fprintf(stdout, "Some Error\n");
-    //    }
-    //    usleep(1000000);
+    //while (1) {
+    //if (controller->test_transmission_timestamp(tx_time, (uint8_t*)&msg, 9) == SUCCESS) {
+    //    fprintf(stdout, "TX Timestamp: %lu\n", tx_time.get_timestamp());
+    //} else {
+    //    fprintf(stdout, "Some Error\n");
+    //}
     //}
 
 

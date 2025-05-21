@@ -35,6 +35,7 @@ typedef enum {
 typedef struct {
     dwm1000_role_t  role;
     uint16_t        short_addr;
+    uint64_t        long_addr;
     const char*     spi_dev;
     uint32_t        spi_baudrate;
     uint8_t         spi_bits_per_word;
@@ -144,7 +145,7 @@ public:
 
     /* DW1000 Configuration */
     dwm_com_error_t set_mode(dw1000_mode_t mode);
-    void enable_frame_filtering(bool enable);
+    void enable_frame_filtering(uint16_t enable);
 
     /* Transmission */
     dwm_com_error_t write_transmission_data(uint8_t* data, uint8_t len);
@@ -183,6 +184,7 @@ public:
 
     /* Setters */
     void set_device_short_addr(uint16_t short_addr);
+    void set_device_long_addr(uint64_t long_addr);
     void set_device_pan_id(uint16_t pan_id);
     void set_tx_antenna_delay(uint16_t delay);
     void set_rx_antenna_delay(uint16_t delay);
@@ -190,12 +192,13 @@ public:
     /* Getters */
     void get_device_id(uint32_t* device_id);
     void get_device_short_addr(uint16_t* short_addr);
+    void get_device_long_addr(uint64_t* long_addr);
     void get_device_pan_id(uint16_t* pan_id);
     dwm1000_role_t get_role();
 
 
     /* Testing Functions */
-    dwm_com_error_t test_transmission_timestamp(DW1000Time& tx_time, uint8_t* payload);
+    dwm_com_error_t test_transmission_timestamp(DW1000Time& tx_time, uint8_t* payload, uint16_t payload_len);
     dwm_com_error_t test_receiving_timestamp(DW1000Time& rx_time);
 
     /* Calibration Fuckery */

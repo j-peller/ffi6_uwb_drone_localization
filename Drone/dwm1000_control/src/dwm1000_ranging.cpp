@@ -28,6 +28,8 @@ DWMRanging* DWMRanging::create_instance(DWMController* ctrl)
          */
         dw1000_dev_instance_t device = {
             .role               = getenv_str("DWM1000_ROLE") == "ANCHOR" ? dwm1000_role_t::ANCHOR : dwm1000_role_t::DRONE,
+            .short_addr         = getenv_int("DWM1000_SHORT_ADDR"),
+            .long_addr          = getenv_int("DWM1000_LONG_ADDR"),
             .spi_dev            = getenv_str("DWM1000_SPI_DEV"),
             .spi_baudrate       = SLOW_SPI,
             .spi_bits_per_word  = 8,
@@ -43,9 +45,6 @@ DWMRanging* DWMRanging::create_instance(DWMController* ctrl)
             return NULL;
         }
     }
-
-    /* Perform a soft reset */
-    controller->soft_reset();
 
     /* Set Controller Mode */
     switch (getenv_int("DWM1000_MODE"))
@@ -64,7 +63,13 @@ DWMRanging* DWMRanging::create_instance(DWMController* ctrl)
         break;
     }
 
+    /* Enable Frame Filter for Data Frames */
+    controller->enable_frame_filtering(SYS_CFG_FFAD);
+
+    /* Set IRQs */
     controller->setIRQMask(SYS_MASK_MRXDFR | SYS_MASK_MTXFRS);
+
+    /* Set configured Antenna Delay */
     controller->set_tx_antenna_delay(INITIAL_ANTENNA_DELAY);
     controller->set_rx_antenna_delay(INITIAL_ANTENNA_DELAY);
     busywait_nanoseconds(1000000);  //< Wait 1ms

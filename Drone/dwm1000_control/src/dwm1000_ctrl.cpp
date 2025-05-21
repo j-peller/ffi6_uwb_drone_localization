@@ -129,6 +129,10 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
 
     fprintf(stdout, "DWM1000 detected with ID: 0x%08X\n", device_id);
 
+    /* Perform Soft Reset */
+    instance->soft_reset();
+    usleep(100000); // wait for 100ms
+
     /* Test SPI Write - and Read Back Value */
     instance->set_device_short_addr(device->short_addr);
     uint16_t short_addr_read_back = 0;
@@ -141,6 +145,19 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
         return NULL;
     }
 
+
+    instance->set_device_long_addr(device->long_addr);
+    uint64_t long_addr_read_back = 0;
+    instance->get_device_long_addr(&long_addr_read_back);
+    if (short_addr_read_back != device->short_addr) {
+        fprintf(stderr, "DWM1000 returned invalid Long Address: 0x%016llX\n", long_addr_read_back);
+        perror("DWM1000 not detected or SPI not working");
+        delete instance;
+        close(fd);
+        return NULL;
+    }
+
+
     instance->set_device_pan_id(DEFAULT_PAN);
     uint16_t pan_id_read_back = 0;
     instance->get_device_pan_id(&pan_id_read_back);
@@ -152,7 +169,7 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
         return NULL;
     }
 
-    fprintf(stdout, "DWM1000 Setup successful!\n\t - Short Address:\t0x%04X\n\t - PAN ID:\t\t0x%04X\n", short_addr_read_back, pan_id_read_back);
+    fprintf(stdout, "DWM1000 Setup successful!\n\t - Short Address:\t0x%04X\n\t - Long Address:\t0x%016llX\n\t - PAN ID:\t\t0x%04X\n", short_addr_read_back, long_addr_read_back, pan_id_read_back);
 
     return instance;
 }
@@ -321,15 +338,20 @@ dwm_com_error_t DWMController::set_mode(dw1000_mode_t mode)
 /**
  * 
  */
-void DWMController::enable_frame_filtering(bool enable)
+void DWMController::enable_frame_filtering(uint16_t enable)
 {
     uint32_t sys_cfg = 0;
     readBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
 
-    if (enable) {
-        sys_cfg |= SYS_CFG_FFE;         //< Enable Frame Filtering. This requires SHORT_ADDR to be set beforehand - shoud be done later
-    } else {
-        sys_cfg &= ~SYS_CFG_FFE;
+    if(enable)
+    {
+        // Enable frame filtering and configure frame types
+        sys_cfg &= ~(SYS_CFG_FF_ALL_EN); // Clear all
+        sys_cfg |= (enable & SYS_CFG_FF_ALL_EN) | SYS_CFG_FFE;
+    }
+    else
+    {
+        sys_cfg &= ~(SYS_CFG_FFE);
     }
 
     writeBytes(SYS_CFG_ID, NO_SUB_ADDRESS, (uint8_t*)&sys_cfg, SYS_CFG_LEN);
@@ -661,6 +683,15 @@ void DWMController::set_device_short_addr(uint16_t short_addr)
 /**
  * 
  */
+void DWMController::set_device_long_addr(uint64_t long_addr)
+{
+    writeBytes(EUI_64_ID, EUI_64_OFFSET, (uint8_t*)&long_addr, EUI_64_LEN);
+}
+
+
+/**
+ * 
+ */
 void DWMController::set_device_pan_id(uint16_t pan_id)
 {
     writeBytes(PANADR_ID, PANADR_PAN_ID_OFFSET, (uint8_t*)&pan_id, sizeof(uint16_t));
@@ -708,6 +739,15 @@ void DWMController::get_device_short_addr(uint16_t* short_addr)
 /**
  * 
  */
+void DWMController::get_device_long_addr(uint64_t* long_addr)
+{
+    readBytes(EUI_64_ID, EUI_64_OFFSET, (uint8_t*)long_addr, EUI_64_LEN);
+}
+
+
+/**
+ * 
+ */
 void DWMController::get_device_pan_id(uint16_t* pan_id)
 {
     readBytes(PANADR_ID, PANADR_PAN_ID_OFFSET, (uint8_t*)pan_id, sizeof(uint16_t));
@@ -726,12 +766,12 @@ dwm1000_role_t DWMController::get_role()
 /**
  * 
  */
-dwm_com_error_t DWMController::test_transmission_timestamp(DW1000Time& tx_time, uint8_t* payload)
+dwm_com_error_t DWMController::test_transmission_timestamp(DW1000Time& tx_time, uint8_t* payload, uint16_t payload_len)
 {
     dwm_com_error_t ret = SUCCESS;
 
     /* write our payload to transmit buffer */
-    ret = write_transmission_data(payload, sizeof(twr_message_t));
+    ret = write_transmission_data(payload, payload_len);
     if (ret != SUCCESS) {
         return ret;
     }

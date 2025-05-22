@@ -1,5 +1,4 @@
 #include "../inc/dwm1000_ranging.hpp"
-#include "../inc/dw1000_modes.h"
 #include "../../../shared/inc/helpers.hpp"
 #include "../inc/dw1000_time.hpp"
 #include <linux/spi/spidev.h>
@@ -16,7 +15,6 @@ DWMRanging* DWMRanging::create_instance(DWMController* ctrl)
 {
     DWMController*      controller = ctrl;
     DWMRanging*         instance = NULL;
-    dw1000_mode_enum_t  mode = getenv_int("DWM1000_MODE");
 
     if (controller == NULL) {
         /**
@@ -30,7 +28,6 @@ DWMRanging* DWMRanging::create_instance(DWMController* ctrl)
         dw1000_dev_instance_t device = {
             .role               = getenv_str("DWM1000_ROLE") == "ANCHOR" ? dwm1000_role_t::ANCHOR : dwm1000_role_t::DRONE,
             .short_addr         = getenv_int("DWM1000_SHORT_ADDR"),
-            .long_addr          = getenv_int("DWM1000_LONG_ADDR"),
             .spi_dev            = getenv_str("DWM1000_SPI_DEV"),
             .spi_baudrate       = SLOW_SPI,
             .spi_bits_per_word  = 8,
@@ -38,7 +35,7 @@ DWMRanging* DWMRanging::create_instance(DWMController* ctrl)
             .gpiod_chip         = getenv_str("DWM1000_GPIO_DEV"),
             .irq_gpio_pin       = getenv_int("DWM1000_IRQ_PIN"),
             .rst_gpio_pin       = getenv_int("DWM1000_RST_PIN"),
-            .mode               = getenv_int("DWM1000_MODE")
+            .mode               = (dw1000_mode_enum_t)getenv_int("DWM1000_MODE")
         };
 
         controller = DWMController::create_instance(&device);
@@ -48,19 +45,20 @@ DWMRanging* DWMRanging::create_instance(DWMController* ctrl)
         }
     }
 
-    switch (controller->_device->mode)
+    /* Depending on our UWB Mode, configure DWM1000 accordingly */
+    switch (controller->_dev_instance.mode)
     {
-    case dw1000_mode_enum_t::JOPEL:
+    case dw1000_mode_enum_t::JOPEL: // Mode 1
         fprintf(stdout, "Setting mode to JOPEL110\n");
         controller->set_mode(JOPEL110);
         break;
-    case dw1000_mode_enum_t::THOTRO:
+    case dw1000_mode_enum_t::THOTRO: // Mode 0
         fprintf(stdout, "Setting mode to THOTRO110\n");
         controller->set_mode(THOTRO110);
         break;
-    case dw1000_mode_enum_t::JOPEL2:
-        fprintf(stdout, "Setting mode to JOPEL850\n");
-        controller->set_mode(JOPEL850);
+    default:
+        fprintf(stdout, "Setting mode to JOPEL110\n");
+        controller->set_mode(JOPEL110);
         break;
     }
 

@@ -145,19 +145,6 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
         return NULL;
     }
 
-
-    instance->set_device_long_addr(device->long_addr);
-    uint64_t long_addr_read_back = 0;
-    instance->get_device_long_addr(&long_addr_read_back);
-    if (short_addr_read_back != device->short_addr) {
-        fprintf(stderr, "DWM1000 returned invalid Long Address: 0x%016llX\n", long_addr_read_back);
-        perror("DWM1000 not detected or SPI not working");
-        delete instance;
-        close(fd);
-        return NULL;
-    }
-
-
     instance->set_device_pan_id(DEFAULT_PAN);
     uint16_t pan_id_read_back = 0;
     instance->get_device_pan_id(&pan_id_read_back);
@@ -169,7 +156,7 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
         return NULL;
     }
 
-    fprintf(stdout, "DWM1000 Setup successful!\n\t - Short Address:\t0x%04X\n\t - Long Address:\t0x%016llX\n\t - PAN ID:\t\t0x%04X\n", short_addr_read_back, long_addr_read_back, pan_id_read_back);
+    fprintf(stdout, "DWM1000 Setup successful!\n\t - Short Address:\t0x%04X\n\t - PAN ID:\t\t0x%04X\n", short_addr_read_back, pan_id_read_back);
 
     return instance;
 }

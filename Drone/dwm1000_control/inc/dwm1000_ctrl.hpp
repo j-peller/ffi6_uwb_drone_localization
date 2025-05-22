@@ -20,6 +20,7 @@
 
 #define SYS_STATUS_ALL_TX_GOOD      (SYS_STATUS_TXFRB | SYS_STATUS_TXPRS | SYS_STATUS_TXPHS | SYS_STATUS_TXFRS)
 
+
 /**
  * 
  */
@@ -30,12 +31,20 @@ typedef enum {
 
 
 /**
+ * 
+ */
+typedef enum {
+    THOTRO,
+    JOPEL,
+} dw1000_mode_enum_t;
+
+
+/**
  * @brief DWM1000 device instance structure
  */
 typedef struct {
     dwm1000_role_t  role;
     uint16_t        short_addr;
-    uint64_t        long_addr;
     const char*     spi_dev;
     uint32_t        spi_baudrate;
     uint8_t         spi_bits_per_word;
@@ -68,6 +77,7 @@ typedef struct {
     uint8_t tc_pgdelay;
     uint32_t fs_pllcfg;
 } dw1000_channel_t;
+
 
 /**
  * 
@@ -133,6 +143,9 @@ typedef struct {
 } dw1000_mode_t;
 
 
+/* Deklaration der konstanten Konfiguration */
+extern const dw1000_mode_t THOTRO110;
+extern const dw1000_mode_t JOPEL110;
 
 
 /**

@@ -1,0 +1,12 @@
+[Unit]
+Description=UWB Anchor Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/uwb_anchor_service -c /etc/uwb_anchor.conf
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

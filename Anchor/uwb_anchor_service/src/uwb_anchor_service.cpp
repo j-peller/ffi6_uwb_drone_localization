@@ -1,8 +1,10 @@
+#include "uwb_anchor_service.hpp"
 #include "dwm1000_ranging.hpp"
 
 #include <iostream>
 #include <unistd.h>
 #include <cstdlib>
+#include <linux/spi/spidev.h>
 #include "INIReader.h"
 
 
@@ -43,14 +45,14 @@ int main(int argc, char* argv[]) {
     dw1000_dev_instance_t device = {
         .role = ROLE, 
         .short_addr = reader.GetInteger("anchor", "short_addr", 0xFFFF),
-        .long_addr = reader.GetInteger("anchor", "long_addr", 0x0),
-        .spi_dev = reader.Get("anchor", "spi_dev", "/dev/spidev0.0"),
+        .spi_dev = reader.Get("anchor", "spi_dev", "/dev/spidev0.0").c_str(),
         .spi_baudrate = SLOW_SPI, //< Start mit 2MHz clock and ramp up after init
         .spi_bits_per_word = 8,
         .spi_mode = SPI_MODE_0,
-        .gpiod_chip = reader.Get("hardware", "gpiod_chip", "/dev/gpiochip4"),
+        .gpiod_chip = reader.Get("hardware", "gpiod_chip", "/dev/gpiochip4").c_str(),
         .irq_gpio_pin = reader.GetInteger("hardware", "irq_pin", 26),
-        .rst_gpio_pin = reader.GetInteger("hardware", "rst_pin", 27) 
+        .rst_gpio_pin = reader.GetInteger("hardware", "rst_pin", 27),
+        .mode = static_cast<dw1000_mode_enum_t>(reader.GetInteger("anchor", "uwb_mode", 1))
     };
 
     /* Create and initialize DWMController Object */
@@ -61,23 +63,25 @@ int main(int argc, char* argv[]) {
     }
 
     /* Create DWMRangingAnchor Object */
-    DWMRangingAnchor* anchor = dynamic_cast<DWMRangingAnchor*>(DWMRangingAnchor::create_instance(controller));
+    DWMRangingAnchor* anchor = dynamic_cast<DWMRangingAnchor*>(DWMRanging::create_instance(controller));
     if (anchor == NULL) {
         std::cerr << "Failed to create DWMRangingAnchor instance" << std::endl;
         return EXIT_FAILURE;
     }
 
+    /* */
+    usleep(1000000);
 
 
-
-
-
-    switch (ROLE) {
-        case dwm1000_role_t::DRONE:
-            break;
-        case dwm1000_role_t::ANCHOR:
-            break;
+    /* TODO */
+    while (true) {
+        /* Run the ranging state machine */
+        dwm_com_error_t ret = anchor->run_state_machine();
+        if (ret != SUCCESS) {
+            std::cerr << "Error in ranging state machine: " << ret << std::endl;
+        }
     }
+
 
     return EXIT_SUCCESS;
 }

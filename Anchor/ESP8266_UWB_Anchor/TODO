@@ -1,8 +1,0 @@
-Note: Due to an issue in the re-initialisation of the receiver, it is necessary to apply a receiver reset after
-an error or timeout event (i.e. RXPTO (Preamble detection Timeout), RXSFDTO (SFD timeout), RXPHE (PHY
-Header Error), RXRFSL (Reed Solomon error), RXRFTO (Frame wait timeout), etc.). This ensures that the
-next good frame will have correctly calculated timestamp. For details on how to apply a receiver-only
-reset see SOFTRESET field of Sub-Register 0x36:00 – PMSC_CTRL0.
-
-Maybe status!
-If IDLE we can try to reconnect or log stuff, if not idle we have to send/receive etc.

@@ -14,8 +14,9 @@ DWMRanging::~DWMRanging()
  */
 DWMRanging* DWMRanging::create_instance(DWMController* ctrl)
 {
-    DWMController*  controller = ctrl;
-    DWMRanging*     instance = NULL;
+    DWMController*      controller = ctrl;
+    DWMRanging*         instance = NULL;
+    dw1000_mode_enum_t  mode = getenv_int("DWM1000_MODE");
 
     if (controller == NULL) {
         /**
@@ -36,7 +37,8 @@ DWMRanging* DWMRanging::create_instance(DWMController* ctrl)
             .spi_mode           = SPI_MODE_0,
             .gpiod_chip         = getenv_str("DWM1000_GPIO_DEV"),
             .irq_gpio_pin       = getenv_int("DWM1000_IRQ_PIN"),
-            .rst_gpio_pin       = getenv_int("DWM1000_RST_PIN")
+            .rst_gpio_pin       = getenv_int("DWM1000_RST_PIN"),
+            .mode               = getenv_int("DWM1000_MODE")
         };
 
         controller = DWMController::create_instance(&device);
@@ -46,8 +48,7 @@ DWMRanging* DWMRanging::create_instance(DWMController* ctrl)
         }
     }
 
-    /* Set Controller Mode */
-    switch (getenv_int("DWM1000_MODE"))
+    switch (controller->_device->mode)
     {
     case dw1000_mode_enum_t::JOPEL:
         fprintf(stdout, "Setting mode to JOPEL110\n");

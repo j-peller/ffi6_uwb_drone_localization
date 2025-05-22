@@ -43,6 +43,7 @@ typedef struct {
     const char*     gpiod_chip;
     uint8_t         irq_gpio_pin;
     uint8_t         rst_gpio_pin;
+    dw1000_mode_enum_t   mode;
 } dw1000_dev_instance_t;
 
 
@@ -138,6 +139,8 @@ typedef struct {
  * @brief DWM1000 Controller class. Communication Interface to the DWM1000 using SPI
  */
 class DWMController {
+
+friend class DWMRanging;
 
 public:
     static DWMController*   create_instance(dw1000_dev_instance_t* spi_dev);
@@ -241,7 +244,6 @@ private:
     int                     _spi_fd;
     uint32_t                _cur_spi_baud;
     uint64_t                _last_sys_status;
-    dw1000_dev_instance_t   _dev_instance;
 
     /* GPIO Control for Reset */
     struct gpiod_chip*      _gpio_chip;
@@ -249,6 +251,9 @@ private:
     struct gpiod_line*      _irq_line;
 
 protected:
+    /* dw1000 device configuration */
+    dw1000_dev_instance_t   _dev_instance;
+
     /* SPI Transaction Header operation modes  */
     static const uint8_t    READ        = 0x00;
     static const uint8_t    WRITE       = 0x01;

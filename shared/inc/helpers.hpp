@@ -39,7 +39,7 @@ static inline int getenv_int(const char* var) {
     if (val) {
         return atoi(val);
     }
-    return 0;
+    return -1;
 }
 
 /**

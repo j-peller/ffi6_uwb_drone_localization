@@ -469,10 +469,10 @@ dwm_com_error_t DWMController::start_receiving()
 dwm_com_error_t DWMController::read_received_data(uint16_t* len_out, uint8_t** data_out)
 {
     /* FCS Error */
-    //if (_last_sys_status & SYS_STATUS_RXFCE) {
-    //    fprintf(stdout, "Error in FCS\n");
-    //    return ERROR;
-    //}
+    if (_last_sys_status & SYS_STATUS_RXFCE) {
+        fprintf(stdout, "Error in FCS\n");
+        return ERROR;
+    }
 
     /* get length of received data from Frame Info register */
     uint16_t len = getReceivedDataLength();
@@ -490,6 +490,14 @@ dwm_com_error_t DWMController::read_received_data(uint16_t* len_out, uint8_t** d
 
     /* Read received data from RX_BUFFER of DW1000 */
     readBytes(RX_BUFFER_ID, NO_SUB_ADDRESS, rx_data, len);
+
+    #if DEBUG
+    fprintf(stdout, "Received data: ");
+    for (int i = 0; i < len; i++) {
+        fprintf(stdout, "%02X ", rx_data[i]);
+    }
+    fprintf(stdout, "\n");
+    #endif
 
     /* update the length of the received buffer */
     *len_out = len;
@@ -728,7 +736,13 @@ void DWMController::get_device_short_addr(uint16_t* short_addr)
  */
 void DWMController::get_device_long_addr(uint64_t* long_addr)
 {
-    readBytes(EUI_64_ID, EUI_64_OFFSET, (uint8_t*)long_addr, EUI_64_LEN);
+    //readBytes(EUI_64_ID, EUI_64_OFFSET, (uint8_t*)long_addr, EUI_64_LEN);
+    uint8_t data[25] = {0};
+    readBytes(RX_BUFFER_ID, NO_SUB_ADDRESS, data, 25);
+
+    for (int i = 0; i < 25; i++) {
+        fprintf(stdout, "%02X ", data[i]);
+    }
 }
 
 
@@ -983,6 +997,9 @@ void DWMController::readBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint3
         return;
     }
 
+    /* wait for 5us to prevent SPI Hammering */
+    //busywait_nanoseconds(10000);
+
     /* copy received data */
     memcpy(data, rx_buf + cmd_len, n);
 }
@@ -1042,6 +1059,9 @@ void DWMController::writeBytes(uint8_t reg, uint16_t offset, uint8_t* data, uint
         perror("Failed to write to SPI device");
         return;
     }
+
+    /* wait for 5us to prevent SPI Hammering */
+    //busywait_nanoseconds(10000);
 }
 
 /**

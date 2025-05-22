@@ -11,14 +11,16 @@ class RangingTest : public ::testing::Test {
 protected:
     void SetUp() override {
         dw1000_dev_instance_t device = {
-            .role = dwm1000_role_t::DRONE,
+            .role = DRONE,
+            .short_addr = MASTER,
             .spi_dev = "/dev/spidev0.0",
             .spi_baudrate = SLOW_SPI, //< Start mit 2MHz clock and ramp up after init
             .spi_bits_per_word = 8,
             .spi_mode = SPI_MODE_0,
             .gpiod_chip = "/dev/gpiochip4",
             .irq_gpio_pin = 26,
-            .rst_gpio_pin = 27
+            .rst_gpio_pin = 27,
+            .mode = getenv_int("DWM1000_MODE") == 1 ? JOPEL : THOTRO
         };
         controller = DWMController::create_instance(&device);
         if (controller == NULL) {
@@ -67,7 +69,7 @@ TEST_F(RangingTest, RangingStatistics) {
         
         distances.push_back(dist);
 
-        usleep(250000);
+        usleep(100000);
 
     }
 

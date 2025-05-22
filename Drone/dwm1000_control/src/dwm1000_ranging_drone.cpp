@@ -254,6 +254,20 @@ dwm_com_error_t DWMRangingDrone::do_report_state(DW1000Time& esp_init_rx_ts, DW1
             //waitOutError();
             return ret;
         } else {
+
+            /**
+             * DONT REMOVE DIS SLEEP
+             * I USED TO KNOW WHATS GOING ON HERE
+             * NOW ONLY GOD KNOWS.
+             */
+
+            busywait_nanoseconds(500000); //< I mean dis, do not remove!!11ELF
+
+            /**
+             * THANKS TO THE GUYS AT THE DWM1000 TEAM
+             * FOR THIS PIECE OF CRAPPY HARDWARE
+             */
+
             ret = _controller->read_received_data(&ack_len, (uint8_t**)&rprt_return);
             if (ret != SUCCESS) {
                 /* Error handling */
@@ -364,6 +378,8 @@ dwm_com_error_t DWMRangingDrone::get_distance_to_anchor(uint16_t anchor_addr, do
         t_sp, t_ra, t_sf,
         t_rp, t_sa, t_rf 
     );
+
+    _controller->get_device_long_addr(NULL);
 
     return ret;
 }

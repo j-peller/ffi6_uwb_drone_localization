@@ -736,13 +736,7 @@ void DWMController::get_device_short_addr(uint16_t* short_addr)
  */
 void DWMController::get_device_long_addr(uint64_t* long_addr)
 {
-    //readBytes(EUI_64_ID, EUI_64_OFFSET, (uint8_t*)long_addr, EUI_64_LEN);
-    uint8_t data[25] = {0};
-    readBytes(RX_BUFFER_ID, NO_SUB_ADDRESS, data, 25);
-
-    for (int i = 0; i < 25; i++) {
-        fprintf(stdout, "%02X ", data[i]);
-    }
+    readBytes(EUI_64_ID, EUI_64_OFFSET, (uint8_t*)long_addr, EUI_64_LEN);
 }
 
 

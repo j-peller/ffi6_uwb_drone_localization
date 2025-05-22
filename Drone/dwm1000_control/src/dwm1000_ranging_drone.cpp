@@ -379,8 +379,6 @@ dwm_com_error_t DWMRangingDrone::get_distance_to_anchor(uint16_t anchor_addr, do
         t_rp, t_sa, t_rf 
     );
 
-    _controller->get_device_long_addr(NULL);
-
     return ret;
 }
 

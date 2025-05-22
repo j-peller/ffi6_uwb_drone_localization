@@ -261,7 +261,7 @@ dwm_com_error_t DWMRangingDrone::do_report_state(DW1000Time& esp_init_rx_ts, DW1
             }
 
             /* Check if we got expected message type and only escape if valid */
-            if ( ack_len == sizeof(twr_message_t) && rprt_return->payload.init.type == TWR_MSG_TYPE_REPORT)
+            if ( ack_len == sizeof(twr_message_t) && rprt_return->payload.report.type == TWR_MSG_TYPE_REPORT)
                 break;
         }
     }
@@ -270,6 +270,16 @@ dwm_com_error_t DWMRangingDrone::do_report_state(DW1000Time& esp_init_rx_ts, DW1
     esp_init_rx_ts.set_timestamp(rprt_return->payload.report.pollRx);
     esp_resp_tx_ts.set_timestamp(rprt_return->payload.report.responseTx);
     esp_fin_rx_ts.set_timestamp(rprt_return->payload.report.finalRx);
+
+    #if DEBUG
+    fprintf(stdout, "Got esp_init_rx_ts: %ld\n", esp_fin_rx_ts.get_timestamp());
+    fprintf(stdout, "Got esp_init_rx_tx in msg: %02X %02X %02X %02X %02X\n", 
+            rprt_return->payload.report.finalRx[0],
+            rprt_return->payload.report.finalRx[1],
+            rprt_return->payload.report.finalRx[2],
+            rprt_return->payload.report.finalRx[3],
+            rprt_return->payload.report.finalRx[4]);
+    #endif
 
     /* cleanup */
     delete rprt_return;

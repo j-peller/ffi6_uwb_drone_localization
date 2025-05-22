@@ -4,8 +4,13 @@
 #include <iostream>
 #include <unistd.h>
 #include <cstdlib>
+#include <csignal>
+#include <thread>
 #include <linux/spi/spidev.h>
 #include "INIReader.h"
+
+/* Global running flag */
+std::atomic<bool> running(true);
 
 
 void print_usage(const char* progname) {
@@ -15,7 +20,18 @@ void print_usage(const char* progname) {
               << "  -h          Show this help message\n";
 }
 
+
+void handle_signal(int signal) {
+    if (signal == SIGINT || signal == SIGTERM) {
+        std::cout << "Received termination signal. Exiting...\n";
+        running = false;
+    }
+}
+
 int main(int argc, char* argv[]) {
+
+    /* Register signal handlers to gracefully stop this service */
+    std::signal(SIGINT, handle_signal);
 
     std::string config_path = DEFAULT_CONFIG_PATH;
 
@@ -74,7 +90,7 @@ int main(int argc, char* argv[]) {
 
 
     /* TODO */
-    while (true) {
+    while (running) {
         /* Run the ranging state machine */
         dwm_com_error_t ret = anchor->run_state_machine();
         if (ret != SUCCESS) {
@@ -82,6 +98,12 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    std::cout << "Stopping Anchor..." << std::endl;
+    usleep(1000000);
+
+    /* Clean Up */
+    if (anchor)
+        delete anchor;
 
     return EXIT_SUCCESS;
 }

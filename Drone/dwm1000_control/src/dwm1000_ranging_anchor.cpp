@@ -197,6 +197,16 @@ dwm_com_error_t DWMRangingAnchor::do_report_state(uint16_t anchor_addr)
     _resp_tx_ts.get_timestamp(report_msg.payload.report.responseTx);
     _final_rx_ts.get_timestamp(report_msg.payload.report.finalRx);
 
+    #if DEBUG
+    fprintf(stdout, "finalRx in DW100Time: %ld\n", _final_rx_ts.get_timestamp());
+    fprintf(stdout, "pollRx in msg: %02X %02X %02X %02X %02X\n", 
+            report_msg.payload.report.finalRx[0],
+            report_msg.payload.report.finalRx[1],
+            report_msg.payload.report.finalRx[2],
+            report_msg.payload.report.finalRx[3],
+            report_msg.payload.report.finalRx[4]);
+    #endif
+
     /* disable receiver auto reenable */
     //_controller->set_receiver_auto_reenable(false);
 
@@ -238,6 +248,8 @@ dwm_com_error_t DWMRangingAnchor::run_state_machine()
                 //HANDLE_STATE_TRANSITION(ret, RangingState::RESP_ACK, RangingState::INIT, timeout_occurred);
                 if (ret == SUCCESS)
                     state = RangingState::RESP_ACK;
+                else
+                    return ret;
                 break;
 
             case RangingState::RESP_ACK:

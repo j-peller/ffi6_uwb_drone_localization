@@ -480,7 +480,7 @@ dwm_com_error_t DWMController::read_received_data(uint16_t* len_out, uint8_t** d
         fprintf(stderr, "Invalid length: %d\n", len);
         return ERROR;
     }
-    //fprintf(stdout, "Received data with length: %d\n", len);
+    fprintf(stdout, "Received data with length: %d\n", len);
 
     uint8_t* rx_data = new uint8_t[len];
     if (rx_data == NULL) {

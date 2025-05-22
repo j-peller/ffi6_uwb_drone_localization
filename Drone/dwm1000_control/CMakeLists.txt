@@ -11,6 +11,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type (Debug or Release)")
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release)
 
+# Add macro definition when in Debug mode
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_definitions(DEBUG=1)
+endif()
+
 # Add compiler flags for Debug and Release
 set(CMAKE_CXX_FLAGS_DEBUG "-g -Wall -Wextra -Wpedantic")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")

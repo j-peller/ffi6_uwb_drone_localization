@@ -1,5 +1,4 @@
 #include "../inc/dwm1000_ranging.hpp"
-#include "../inc/dw1000_modes.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,14 +21,14 @@ int main() {
     dw1000_dev_instance_t device = {
         .role = ROLE,
         .short_addr = (ROLE == dwm1000_role_t::DRONE) ? MASTER : ANCHOR_1,
-        .long_addr = (ROLE == dwm1000_role_t::DRONE) ? MASTER_LONG : ANCHOR_1_LONG,
         .spi_dev = "/dev/spidev0.0",
         .spi_baudrate = SLOW_SPI, //< Start mit 2MHz clock and ramp up after init
         .spi_bits_per_word = 8,
         .spi_mode = SPI_MODE_0,
         .gpiod_chip = "/dev/gpiochip4",
         .irq_gpio_pin = 26,
-        .rst_gpio_pin = 27
+        .rst_gpio_pin = 27,
+        .mode = getenv_int("DWM1000_MODE") == 1 ? JOPEL : THOTRO
     };
     DWMController* controller = DWMController::create_instance(&device);
     if (controller == NULL) {

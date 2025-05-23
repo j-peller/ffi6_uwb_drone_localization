@@ -42,7 +42,6 @@ dwm_com_error_t DWMRangingAnchor::do_init_state()
         ret = _controller->poll_rx_status();
         if (ret == TIMEOUT)
         {
-            //continue; //< we dont care for timeout in init state
             return ret;
         } else if (ret == ERROR) {
             //waitOutError();
@@ -64,12 +63,15 @@ dwm_com_error_t DWMRangingAnchor::do_init_state()
         }
     }
 
-        /* Remember receive timestamp */
-        _controller->get_rx_timestamp(_init_rx_ts);
-        fprintf(stdout, "Got init_rx_ts: %ld\n", _init_rx_ts.get_timestamp());
+    /* Remember receive timestamp */
+    _controller->get_rx_timestamp(_init_rx_ts);
 
-        return SUCCESS;
-    }
+    #if DEBUG
+    fprintf(stdout, "Got init_rx_ts: %ld\n", _init_rx_ts.get_timestamp());
+    #endif
+
+    return SUCCESS;
+}
 
 
 /**
@@ -86,11 +88,15 @@ dwm_com_error_t DWMRangingAnchor::do_response_ack_state(uint16_t anchor_addr)
         .header = (twr_frame_header_t) {
             .frameCtrl = {0x41, 0x88},
             .seqNum = 0x00,
-            .panID = {0xCA, 0xDE},
+            .panID = {DEFAULT_PAN & 0xff, DEFAULT_PAN >> 8},
             .destAddr = { MASTER & 0xff, MASTER >> 8 },
             .srcAddr = { anchor_addr & 0xff, anchor_addr >> 8 }
         },
-        .payload = { .response = {.type = twr_msg_type_t::TWR_MSG_TYPE_RESPONSE,}}
+        .payload = { 
+            .response = {
+                .type = twr_msg_type_t::TWR_MSG_TYPE_RESPONSE
+            }
+        }
     };
 
     /* disable receiver auto reenable */
@@ -111,7 +117,10 @@ dwm_com_error_t DWMRangingAnchor::do_response_ack_state(uint16_t anchor_addr)
 
     /* Note time of transmission */
     _controller->get_tx_timestamp(_resp_tx_ts);
+
+    #if DEBUG
     fprintf(stdout, "Got resp_tx_ts: %ld\n", _resp_tx_ts.get_timestamp());
+    #endif
 
     return dwm_com_error_t::SUCCESS;
 }
@@ -141,7 +150,6 @@ dwm_com_error_t DWMRangingAnchor::do_final_state()
         ret = _controller->poll_rx_status();
         if (ret != SUCCESS)
         {
-            // for testing only...
             return ret;
         } else {
             ret = _controller->read_received_data(&ack_len, (uint8_t**)&fin_return);
@@ -162,7 +170,10 @@ dwm_com_error_t DWMRangingAnchor::do_final_state()
 
     /* Remember receive timestamp */
     _controller->get_rx_timestamp(_final_rx_ts);
+
+    #if DEBUG
     fprintf(stdout, "Got final_rx_ts: %ld\n", _final_rx_ts.get_timestamp());
+    #endif
 
     return SUCCESS;
 }
@@ -184,7 +195,7 @@ dwm_com_error_t DWMRangingAnchor::do_report_state(uint16_t anchor_addr)
         .header = (twr_frame_header_t) {
             .frameCtrl = {0x41, 0x88},
             .seqNum = 0x00,
-            .panID = {0xCA, 0xDE},
+            .panID = {DEFAULT_PAN & 0xff, DEFAULT_PAN >> 8},
             .destAddr = { MASTER & 0xff, MASTER >> 8 },
             .srcAddr = { anchor_addr & 0xff, anchor_addr >> 8 }
         },
@@ -235,9 +246,6 @@ dwm_com_error_t DWMRangingAnchor::run_state_machine()
     int retries = 0;
     RangingState state = RangingState::INIT;
     dwm_com_error_t ret = SUCCESS;
-
-    // variables in method scope
-    //bool timeout_occurred = false;
 
     while (state != RangingState::COMPLETE) {
 

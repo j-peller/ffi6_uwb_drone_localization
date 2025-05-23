@@ -17,22 +17,26 @@ double DWMRangingDrone::timestamps2distance(
     DW1000Time& t_rp, DW1000Time& t_sa, DW1000Time& t_rf 
 ) {
 
+    #if DEBUG
     fprintf(stdout, "t_sp: %ld\n", t_sp.get_timestamp());
     fprintf(stdout, "t_ra: %ld\n", t_ra.get_timestamp());
     fprintf(stdout, "t_sf: %ld\n", t_sf.get_timestamp());
     fprintf(stdout, "t_rp: %ld\n", t_rp.get_timestamp());
     fprintf(stdout, "t_sa: %ld\n", t_sa.get_timestamp());
     fprintf(stdout, "t_rf: %ld\n", t_rf.get_timestamp());
+    #endif 
     
     DW1000Time t_round1 = (t_ra - t_sp).wrap();
     DW1000Time t_round2 = (t_rf - t_sa).wrap();
     DW1000Time t_reply1 = (t_sa - t_rp).wrap();
     DW1000Time t_reply2 = (t_sf - t_ra).wrap();
 
+    #if DEBUG
     fprintf(stdout, "r_round1: %ld\n", t_round1.get_timestamp());
     fprintf(stdout, "r_round2: %ld\n", t_round2.get_timestamp());
     fprintf(stdout, "r_reply1: %ld\n", t_reply1.get_timestamp());
     fprintf(stdout, "r_reply2: %ld\n", t_reply2.get_timestamp());
+    #endif
 
     DW1000Time time_of_flight = ((t_round1 * t_round2) - (t_reply1 * t_reply2)) / (t_round1 + t_round2 + t_reply1 + t_reply2);
 
@@ -98,14 +102,16 @@ dwm_com_error_t DWMRangingDrone::do_init_state(DW1000Time& init_tx_ts, uint16_t 
         .header = (twr_frame_header_t) {
             .frameCtrl = {0x41, 0x88},
             .seqNum = 0x00,
-            .panID = {0xCA, 0xDE},
+            .panID = {DEFAULT_PAN & 0xff, DEFAULT_PAN >> 8},
             .destAddr = { anchor_addr & 0xff, anchor_addr >> 8 },
             .srcAddr = { MASTER & 0xff, MASTER >> 8 }
         },
-        .payload = { .init = (twr_init_message_t) {
-            .type = twr_msg_type_t::TWR_MSG_TYPE_POLL,
-            .anchorShortAddr = {anchor_addr & 0xff, anchor_addr >> 8},
-        }}
+        .payload = { 
+            .init = (twr_init_message_t) {
+                .type = twr_msg_type_t::TWR_MSG_TYPE_POLL,
+                .anchorShortAddr = {anchor_addr & 0xff, anchor_addr >> 8},
+            }
+        }
     };
 
     /* */
@@ -195,11 +201,15 @@ dwm_com_error_t DWMRangingDrone::do_final_state(DW1000Time& fin_tx_ts, uint16_t 
         .header = (twr_frame_header_t) {
             .frameCtrl = {0x41, 0x88},
             .seqNum = 0x00,
-            .panID = {0xCA, 0xDE},
+            .panID = {DEFAULT_PAN & 0xff, DEFAULT_PAN >> 8},
             .destAddr = { anchor_addr & 0xff, anchor_addr >> 8 },
             .srcAddr = { MASTER & 0xff, MASTER >> 8 }
         },
-        .payload = { .final = {.type = twr_msg_type_t::TWR_MSG_TYPE_FINAL,}}
+        .payload = { 
+            .final = {
+                .type = twr_msg_type_t::TWR_MSG_TYPE_FINAL,
+            }
+        }
     };
 
     /* */
@@ -314,7 +324,6 @@ dwm_com_error_t DWMRangingDrone::get_distance_to_anchor(uint16_t anchor_addr, do
     // variables in method scope
     DW1000Time t_sp, t_ra, t_sf;
     DW1000Time t_rp, t_sa, t_rf;
-    bool timeout_occurred = false;
 
     while (state != RangingState::COMPLETE) {
 
@@ -363,6 +372,7 @@ dwm_com_error_t DWMRangingDrone::get_distance_to_anchor(uint16_t anchor_addr, do
                 return SUCCESS;
         }
 
+        fprintf(stdout, "Cur State: %d\n", (int)state);
         //if (timeout_occurred) {
         //    retries++;
         //    timeout_occurred = false;

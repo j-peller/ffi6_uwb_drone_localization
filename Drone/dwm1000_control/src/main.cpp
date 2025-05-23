@@ -89,7 +89,17 @@ void run_drone(DWMController* controller) {
 
     double distance = 0.0;
     tag->get_distance_to_anchor(ANCHOR_1, &distance);
-    fprintf(stdout, "Got distances: %lfm\n", distance);
+    fprintf(stdout, "Got distance to Anchor: %02X: %lfm\n", ANCHOR_1, distance);
+
+    /**
+     * When delay between two rangings is too short, wrong readings are to be expected
+     * Probably due to one DWM1000 getting interfeered by the message of the other q._.p
+     */
+    usleep(100000);
+
+    distance = 0.0;
+    tag->get_distance_to_anchor(ANCHOR_2, &distance);
+    fprintf(stdout, "Got distance to Anchor: %02X: %lfm\n", ANCHOR_2, distance);
 
     delete tag;
 }

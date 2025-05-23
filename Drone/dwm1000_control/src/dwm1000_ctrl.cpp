@@ -89,14 +89,6 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
         return NULL;
     }
 
-    if (gpiod_line_request_output(instance->_rst_line, "DWM1000Reset", 0) < 0) {
-        perror("Failed to set RST GPIO Pin to OUTPUT");
-        gpiod_chip_close(instance->_gpio_chip);
-        delete instance;
-        close(fd);
-        return NULL;
-    }
-
     /**
      * DWM1000 IRQ Pin stays asserted!!
      */
@@ -121,7 +113,6 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
     instance->get_device_id(&device_id);
     if (device_id != 0xDECA0130) {
         fprintf(stderr, "DWM1000 returned invalid device ID: 0x%08X\n", device_id);
-        perror("DWM1000 not detected or SPI not working");
         delete instance;
         close(fd);
         return NULL;
@@ -169,8 +160,17 @@ DWMController::DWMController(int spi_fd, dw1000_dev_instance_t* device)
 }   
 
 
+/**
+ * Destructor: Hard Reset of DWM1000 is performed on destruction
+ */
 DWMController::~DWMController()
 {
+    /* Place DWM1000 into a known reset state */
+    if (_rst_line) {
+        fprintf(stdout, "Performing Hard Reset of DWM1000\n");
+        hard_reset();
+    }
+
     /* Close GPIO Chip */
     if (_gpio_chip) {
         gpiod_line_release(_irq_line);
@@ -181,7 +181,6 @@ DWMController::~DWMController()
     if (_spi_fd >= 0) {
         close(_spi_fd);
     }
-
 }
 
 
@@ -559,12 +558,6 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t ti
     timespec timeout_ts = {.tv_sec = timeout / 1000000000, .tv_nsec = timeout % 1000000000};
     int gpio_ret;
 
-    /**
-     * Mask only desired interrupts.
-     * Sys Status Register is cleared by receiver / transmitter enable
-     */
-    //setIRQMask(status_mask);
-
     /* wait for event on irq pin */
     gpio_ret = gpiod_line_event_wait(_irq_line, &timeout_ts);
     if (gpio_ret > 0) {
@@ -620,19 +613,21 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t ti
  * @brief External hard reset of the DWM1000 device
  * 
  */
-void DWMController::reset()
+void DWMController::hard_reset()
 {
-    /*  */
-    gpiod_line_request_output(_rst_line, "DWM1000Reset", 0);
-
-    /* */
-    gpiod_line_set_value(_rst_line, 0);
+    /* Request line as output and set to LOW */
+    if (gpiod_line_request_output(_rst_line, "DWM1000Reset", 0) < 0) {
+        perror("Failed to set RST GPIO Pin to OUTPUT");
+    }
 
     /* Reset Pin should be manually driven low for at least 50ns to ensure correct reset operation */
     busywait_nanoseconds(1000);
 
-    /* */
-    gpiod_line_request_input(_rst_line, "DWM1000Reset");
+    /* release and reassign for input */
+    gpiod_line_release(_rst_line);
+    if (gpiod_line_request_input(_rst_line, "DWM1000Reset") < 0) {
+        perror("Failed to set RST GPIO Pin to INPUT");
+    }
 
     /* busywait for 10ms */
     busywait_nanoseconds(10000000);
@@ -1073,9 +1068,13 @@ void DWMController::writeBytes(uint8_t reg, uint16_t offset, uint32_t data)
  */
 void DWMController::readBytesOTP(uint16_t addr, uint8_t* data, uint32_t len)
 {
+    setSysClockSource(XTI_CLOCK);
+
     for (uint32_t i = 0; i < (len / 4); i++) {
         _readBytesOTP(addr + i, data + (i * sizeof(uint32_t)));
     }
+
+    setSysClockSource(AUTO_CLOCK);
 }
 
 
@@ -1155,7 +1154,7 @@ void DWMController::clearStatusEvent(uint64_t event_mask)
 /**
  * 
  */
-void DWMController::setIRQMask(uint32_t irq_mask)
+void DWMController::set_irq_mask(uint32_t irq_mask)
 {
     writeBytes(SYS_MASK_ID, NO_SUB_ADDRESS, irq_mask);
 }
@@ -1180,31 +1179,35 @@ void DWMController::forceIdle() {
 void DWMController::setSysClockSource(uint8_t source)
 {
     uint32_t pmsc_ctrl = 0;
+    uint32_t baud = 0;
     readBytes(PMSC_ID, PMSC_CTRL0_OFFSET, (uint8_t*)&pmsc_ctrl, PMSC_CTRL0_LEN);
 
     switch (source)
     {
     case AUTO_CLOCK:
-        spiSetBaud(FAST_SPI);
+        baud = FAST_SPI;
         pmsc_ctrl &= ~(0x3UL); //< clear sysclk bits
         pmsc_ctrl |= PMSC_CTRL0_SYSCLKS_AUTO; //< set sysclk to auto
         break;
     
     case XTI_CLOCK:
-        spiSetBaud(SLOW_SPI);
+        baud = SLOW_SPI;
         pmsc_ctrl &= ~(0x3UL); //< clear sysclk bits
         pmsc_ctrl |= PMSC_CTRL0_SYSCLKS_19M; //< set sysclk to xti
         break;
 
     case PLL_CLOCK:
-        spiSetBaud(FAST_SPI);
+        baud = FAST_SPI;
         pmsc_ctrl &= ~(0x3UL); //< clear sysclk bits
         pmsc_ctrl |= PMSC_CTRL0_SYSCLKS_125M; //< set sysclk to pll
         break;
     }
 
     writeBytes(PMSC_ID, PMSC_CTRL0_OFFSET, (uint8_t*)&pmsc_ctrl, PMSC_CTRL0_LEN);
-    
+
+    spiSetBaud(baud);
+
+    busywait_nanoseconds(100000);
 }
 
 

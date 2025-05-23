@@ -66,7 +66,7 @@ DWMRanging* DWMRanging::create_instance(DWMController* ctrl)
     controller->enable_frame_filtering(SYS_CFG_FFAD);
 
     /* Set IRQs */
-    controller->setIRQMask(SYS_MASK_MRXDFR | SYS_MASK_MTXFRS);
+    controller->set_irq_mask(SYS_MASK_MRXDFR | SYS_MASK_MTXFRS);
 
     /* Set configured Antenna Delay */
     controller->set_tx_antenna_delay(INITIAL_ANTENNA_DELAY);

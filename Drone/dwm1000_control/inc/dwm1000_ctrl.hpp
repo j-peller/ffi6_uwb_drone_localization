@@ -178,25 +178,25 @@ public:
     /* Poll Status Bit */
     dwm_com_error_t poll_status_bit(uint32_t status_mask, uint64_t timeout);
 
-    /**
-     * @brief All TX events
-     */
+    /* Poll for Frame Sent Event */
     inline dwm_com_error_t poll_tx_status() {
-        //return poll_status_bit(SYS_STATUS_ALL_TX_GOOD, DW1000_TIMEOUT);
         return poll_status_bit(SYS_STATUS_TXFRS, DW1000_TIMEOUT);
     }
 
-    /**
-     * @brief All RX events after a correct packet reception
-     */
+    /* Poll for Data Frame Ready Event */
     inline dwm_com_error_t poll_rx_status() {
-        //return poll_status_bit(SYS_STATUS_ALL_RX_GOOD, RX_TIMEOUT);
         return poll_status_bit(SYS_STATUS_RXDFR, RX_TIMEOUT);
     }
 
+
+    /* Recover from Reset */
+    dwm_com_error_t recover_from_reset();
+
+
     /* Reset */
-    void reset();
+    void hard_reset();
     void soft_reset();
+
 
     /* Setters */
     void set_device_short_addr(uint16_t short_addr);
@@ -204,6 +204,8 @@ public:
     void set_device_pan_id(uint16_t pan_id);
     void set_tx_antenna_delay(uint16_t delay);
     void set_rx_antenna_delay(uint16_t delay);
+    void set_irq_mask(uint32_t irq_mask);
+
 
     /* Getters */
     void get_device_id(uint32_t* device_id);
@@ -216,13 +218,12 @@ public:
     /* Testing Functions */
     dwm_com_error_t test_transmission_timestamp(DW1000Time& tx_time, uint8_t* payload, uint16_t payload_len);
     dwm_com_error_t test_receiving_timestamp(DW1000Time& rx_time);
+    
 
     /* Calibration Fuckery */
     dwm_com_error_t send_antenna_calibration_value(uint16_t delay);
     dwm_com_error_t wait_for_antenna_calibration_value(uint16_t* delay);
     
-    
-    void setIRQMask(uint32_t irq_mask);
 private:
     DWMController(int spi_fd, dw1000_dev_instance_t* device);
 

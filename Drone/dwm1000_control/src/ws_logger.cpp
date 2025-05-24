@@ -9,6 +9,7 @@ char* WSLogger::send_buffer = nullptr;
 
 WSLogger& WSLogger::get_instance(const char* server_address, uint16_t port, uint16_t id)
 {
+    /* Static pointer to singelton instance, its initialized only once-on the first call to this function */
     static WSLogger* instance = nullptr;
 
     if (!instance) {
@@ -20,6 +21,11 @@ WSLogger& WSLogger::get_instance(const char* server_address, uint16_t port, uint
     }
 
     return *instance;
+}
+
+WSLogger& WSLogger::get_instance()
+{
+    return get_instance("dummy", 0, 0); //dummy args will be ignored since instance is already initialized
 }
 
 WSLogger::WSLogger(const char* server_address, uint16_t port, uint16_t id)

@@ -1,5 +1,6 @@
 #include "uwb_anchor_service.hpp"
 #include "dwm1000_ranging.hpp"
+#include "ws_logger.hpp"
 
 #include <iostream>
 #include <unistd.h>
@@ -33,6 +34,7 @@ int main(int argc, char* argv[]) {
     /* Register signal handlers to gracefully stop this service */
     std::signal(SIGINT, handle_signal);
 
+    /* Location of Config file if not specified otherwise */
     std::string config_path = DEFAULT_CONFIG_PATH;
 
     int opt;
@@ -56,6 +58,16 @@ int main(int argc, char* argv[]) {
         std::cerr << "Error: Failed to load config file: " << config_path << std::endl;
         return EXIT_FAILURE;
     }
+
+    /* Create globally available logger */
+    WSLogger::get_instance(
+        reader.Get("logging", "log_server_ip", "0.0.0.0").c_str(),
+        reader.GetInteger("logging", "log_server_port", 0),
+        reader.GetInteger("anchor", "anchor_id", 0xFFFF)
+    );
+
+    /* Print Test Message */
+    WS_LOG("WSLogger initialized for Anchor with ID: %d", reader.GetInteger("anchor", "anchor_id", 0xFFFF));
 
     /* Get relevant Informations for our DWMController */
     dw1000_dev_instance_t device = {

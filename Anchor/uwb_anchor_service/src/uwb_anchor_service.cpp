@@ -13,21 +13,21 @@
 /* Global running flag */
 std::atomic<bool> running(true);
 
+/* Global state of the anchor service */
+std::atomic<anchor_state_t> current_state(RANGING);
 
-void print_usage(const char* progname) {
-    std::cout << "Usage: " << progname << " [-c config_file]\n"
-              << "  -c <file>   Specify path to configuration file (default: "
-              << DEFAULT_CONFIG_PATH << ")\n"
-              << "  -h          Show this help message\n";
-}
+/* Anchor State */
+typedef enum {
+    RANGING, 
+    CALIBRATION,
+    RESET
+} anchor_state_t;
 
 
-void handle_signal(int signal) {
-    if (signal == SIGINT || signal == SIGTERM) {
-        std::cout << "Received termination signal. Exiting...\n";
-        running = false;
-    }
-}
+/* */
+void print_usage(const char* progname);
+void handle_signal(int signal);
+
 
 int main(int argc, char* argv[]) {
 
@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    /* Create globally available logger */
+    /* Create globally available logger (separate thread) */
     WSLogger::get_instance(
         reader.Get("logging", "log_server_ip", "0.0.0.0").c_str(),
         reader.GetInteger("logging", "log_server_port", 0),
@@ -104,9 +104,21 @@ int main(int argc, char* argv[]) {
     /* TODO */
     while (running) {
         /* Run the ranging state machine */
-        dwm_com_error_t ret = anchor->run_state_machine();
-        if (ret != SUCCESS) {
-            std::cerr << "Error in ranging state machine: " << ret << std::endl;
+        switch (current_state) {
+            case RANGING:
+                anchor->run_state_machine();
+                break;
+
+            case CALIBRATION:
+                //anchor->run_calibration();
+                break;
+
+            case RESET:
+                /* After Softreset, Shortaddr must be set again */
+                anchor->soft_reset();
+                break;
+
+
         }
     }
 
@@ -118,4 +130,20 @@ int main(int argc, char* argv[]) {
         delete anchor;
 
     return EXIT_SUCCESS;
+}
+
+
+void print_usage(const char* progname) {
+    std::cout << "Usage: " << progname << " [-c config_file]\n"
+              << "  -c <file>   Specify path to configuration file (default: "
+              << DEFAULT_CONFIG_PATH << ")\n"
+              << "  -h          Show this help message\n";
+}
+
+
+void handle_signal(int signal) {
+    if (signal == SIGINT || signal == SIGTERM) {
+        std::cout << "Received termination signal. Exiting...\n";
+        running = false;
+    }
 }

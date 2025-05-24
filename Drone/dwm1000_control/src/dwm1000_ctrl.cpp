@@ -610,10 +610,78 @@ dwm_com_error_t DWMController::poll_status_bit(uint32_t status_mask, uint64_t ti
 
 
 /**
+ *  TODO: maybe perform SPI Checks again with readback
+ */
+dwm_com_error_t DWMController::recover_from_reset()
+{
+    /* Set Short Addr */
+    set_device_short_addr(_dev_instance.short_addr);
+
+    /* Set PAN ID */
+    set_device_pan_id(DEFAULT_PAN);
+
+    /* Depending on our UWB Mode, configure DWM1000 accordingly */
+    switch (_dev_instance.mode)
+    {
+    case dw1000_mode_enum_t::JOPEL: // Mode 1
+        fprintf(stdout, "Setting mode to JOPEL110\n");
+        set_mode(JOPEL110);
+        break;
+    case dw1000_mode_enum_t::THOTRO: // Mode 0
+        fprintf(stdout, "Setting mode to THOTRO110\n");
+        set_mode(THOTRO110);
+        break;
+    default:
+        fprintf(stdout, "Setting mode to JOPEL110\n");
+        set_mode(JOPEL110);
+        break;
+    }
+
+    /* Enable Frame Filter for Data Frames */
+    enable_frame_filtering(SYS_CFG_FFAD);
+
+    /* Set IRQs */
+    set_irq_mask(SYS_MASK_MRXDFR | SYS_MASK_MTXFRS);
+
+    /* Set configured Antenna Delay */
+    /* TODO: maybe add to device_instance config also */
+    set_tx_antenna_delay(INITIAL_ANTENNA_DELAY);
+    set_rx_antenna_delay(INITIAL_ANTENNA_DELAY);
+}
+
+
+/**
+ * 
+ */
+dwm_com_error_t DWMController::soft_reset()
+{
+    /* perform soft reset */
+    softReset();
+
+    /* do we need to fully recover? idk. needs testing - for now, just set short addr */
+    set_device_short_addr(_dev_instance.short_addr);
+    set_device_pan_id(DEFAULT_PAN);
+}
+
+
+/**
+ * 
+ */
+dwm_com_error_t DWMController::hard_reset()
+{
+    /* perform hard reset */
+    hardReset();
+
+    /* recover from hardreset... reinitialize DWM1000 */
+    recover_from_reset();
+}
+
+
+/**
  * @brief External hard reset of the DWM1000 device
  * 
  */
-void DWMController::hard_reset()
+void DWMController::hardReset()
 {
     /* Request line as output and set to LOW */
     if (gpiod_line_request_output(_rst_line, "DWM1000Reset", 0) < 0) {
@@ -640,7 +708,7 @@ void DWMController::hard_reset()
 /**
  * @brief API to do softreset on dw1000 by writing data into PMSC_CTRL0_SOFTRESET_OFFSET.
  */
- void DWMController::soft_reset() 
+ void DWMController::softReset() 
  {
     /* set SYSCLKS to 19.2MHz as per Documentation: p191 DW1000 User Manual */
     setSysClockSource(XTI_CLOCK);

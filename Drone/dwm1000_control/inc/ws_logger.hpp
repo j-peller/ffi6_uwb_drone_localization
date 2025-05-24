@@ -8,6 +8,11 @@
 #include <string>
 #include <thread>
 
+
+/* Helper Macro to call global logger */
+#define WS_LOG(fmt, ...) \
+    WSLogger::get_instance().log("[%s:%d] " fmt, __FILE__, __LINE__, ##__VA_ARGS__)
+
 enum Logger_State 
 {
     CONNECTED,
@@ -17,7 +22,15 @@ enum Logger_State
 
 class WSLogger {
     public:
-        WSLogger(const char* server_address, uint16_t port, uint16_t id);
+
+        /**
+         * @brief Returns the singleton instance of WSLogger.
+         * 
+         * Ensures that only one instance of WSLogger exists througout the application. Globally.
+         * 
+         * @return WSLogger& - Reference to the global singleton instance.
+         */
+        static WSLogger& get_instance(const char* server_address, uint16_t port, uint16_t id);
         
         /* put a message into the output queue */
         void log(const char* message, ...);
@@ -25,6 +38,10 @@ class WSLogger {
         ~WSLogger();
         
     private:
+
+        /* Make Constructor Private */
+        WSLogger(const char* server_address, uint16_t port, uint16_t id);
+
         /**
          * Puts a message and a type encoded in JSON format into the sending queue.
          * 

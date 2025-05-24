@@ -7,6 +7,21 @@
 int WSLogger::send_len = 0;
 char* WSLogger::send_buffer = nullptr;
 
+WSLogger& WSLogger::get_instance(const char* server_address, uint16_t port, uint16_t id)
+{
+    static WSLogger* instance = nullptr;
+
+    if (!instance) {
+        if (!server_address || port == 0) {
+            fprintf(stderr, "[WSLogger] Invalid server address or port\n");
+            fprintf(stderr, "[WSLogger] must be initialized with parameters at first call.\n");
+        }
+        instance = new WSLogger(server_address, port, id);
+    }
+
+    return *instance;
+}
+
 WSLogger::WSLogger(const char* server_address, uint16_t port, uint16_t id)
 {
     this->id = id;
@@ -154,6 +169,7 @@ int WSLogger::callback(struct lws* wsi, enum lws_callback_reasons reason, void* 
     }
     return 0;
 }
+
 void WSLogger::log(const char* message, ...)
 {
     va_list args;
@@ -184,6 +200,7 @@ void WSLogger::sendID()
     snprintf(hex_id, sizeof(hex_id), "0x%04X", id);  // z. B. "0x1A2B"
     queue("id", hex_id);
 }
+
 bool WSLogger::connect(const char* address, int port, const char* path)
 {
     struct lws_context_creation_info info = {};

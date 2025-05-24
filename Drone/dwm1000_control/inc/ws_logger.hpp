@@ -31,6 +31,11 @@ class WSLogger {
          * @return WSLogger& - Reference to the global singleton instance.
          */
         static WSLogger& get_instance(const char* server_address, uint16_t port, uint16_t id);
+
+        /**
+         * @brief Lazy initialization of the WSLogger instance.
+         */
+        static WSLogger& get_instance();
         
         /* put a message into the output queue */
         void log(const char* message, ...);

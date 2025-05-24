@@ -63,11 +63,11 @@ int main(int argc, char* argv[]) {
     WSLogger::get_instance(
         reader.Get("logging", "log_server_ip", "0.0.0.0").c_str(),
         reader.GetInteger("logging", "log_server_port", 0),
-        reader.GetInteger("anchor", "anchor_id", 0xFFFF)
+        reader.GetInteger("anchor", "short_addr", 0xFFFF)
     );
 
     /* Print Test Message */
-    WS_LOG("WSLogger initialized for Anchor with ID: %d", reader.GetInteger("anchor", "anchor_id", 0xFFFF));
+    WS_LOG("WSLogger initialized for Anchor with ID: %d", reader.GetInteger("anchor", "short_addr", 0xFFFF));
 
     /* Get relevant Informations for our DWMController */
     dw1000_dev_instance_t device = {

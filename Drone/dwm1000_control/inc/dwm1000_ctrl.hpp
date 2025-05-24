@@ -194,8 +194,8 @@ public:
 
 
     /* Reset */
-    void hard_reset();
-    void soft_reset();
+    dwm_com_error_t hard_reset();
+    dwm_com_error_t soft_reset();
 
 
     /* Setters */
@@ -241,6 +241,10 @@ private:
     uint16_t getReceivedDataLength();
     void deleteReceivedDataLength();
     void clearStatusEvent(uint64_t event_mask);
+
+    /* Reset */
+    void hardReset();
+    void softReset();
     
     /* DW1000 Mode Control */
     void forceIdle();

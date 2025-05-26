@@ -32,9 +32,9 @@ file(GLOB_RECURSE DWM1000_CTRL_SOURCES
     "../../Drone/dwm1000_control/src/dw1000_time.cpp"
     "../../Drone/dwm1000_control/src/dwm1000_ctrl.cpp"
     "../../Drone/dwm1000_control/src/dwm1000_ranging.cpp"
-    "../../Drone/dwm1000_control/src/dwm1000_ranging_drone.cpp"
     "../../Drone/dwm1000_control/src/dwm1000_ranging_anchor.cpp"
     "../../Drone/dwm1000_control/src/dw1000_modes.cpp"
+    "../../Drone/dwm1000_control/src/ws_logger.cpp"
     )
 
 # 
@@ -44,9 +44,10 @@ find_package(PkgConfig REQUIRED)
 
 # Find inih via pkg-config
 pkg_check_modules(INIReader REQUIRED IMPORTED_TARGET INIReader)
+pkg_check_modules(LIB_WEBSOCKETS REQUIRED libwebsockets)
 
 # Add the executable
 add_executable(${PROJECT_NAME} ${SOURCES} ${DWM1000_CTRL_SOURCES})
 
 # 
-target_link_libraries(${PROJECT_NAME} Eigen3::Eigen gpiod PkgConfig::INIReader)
+target_link_libraries(${PROJECT_NAME} Eigen3::Eigen gpiod PkgConfig::INIReader ${LIB_WEBSOCKETS_LIBRARIES})

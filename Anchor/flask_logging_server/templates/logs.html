@@ -1,18 +1,139 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>ESP Logs</title>
+    <meta charset="UTF-8" />
+    <title>WS-Logs</title>
     <style>
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
+        :root {
+            --bg-light: #f9fafb;
+            --text-light: #333;
+            --bg-dark: #1e293b;
+            --text-dark: #e2e8f0;
+            --table-bg-dark: #334155;
+            --hover-bg-dark: #475569;
+            --select-bg-dark: #1e40af;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-light);
+            margin: 2rem;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        body.dark-mode {
+            background-color: var(--bg-dark);
+            color: var(--text-dark);
+        }
+
+        h2, h3 {
+            color: inherit;
+        }
+
+        /* Toggle Button */
+        #darkModeToggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            cursor: pointer;
+            transform: scale(1.5);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 10px;
+            box-shadow: 0 4px 12px rgb(0 0 0 / 0.05);
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            transition: background-color 0.3s ease;
+        }
+
+        body.dark-mode table {
+            background: var(--table-bg-dark);
+        }
+
+        thead tr {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        th, td {
+            padding: 12px 15px;
+        }
+
+        tbody tr {
+            background-color: #ffffff;
+            transition: background-color 0.3s ease;
+        }
+
+        body.dark-mode tbody tr {
+            background-color: var(--table-bg-dark);
+        }
+
+        tbody tr:hover {
+            background-color: #eff6ff;
+        }
+
+        body.dark-mode tbody tr:hover {
+            background-color: var(--hover-bg-dark);
+        }
+
+        #idSelect, #loggerSelect {
+            width: 220px;
+            margin-bottom: 1rem;
+            padding: 8px 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1e293b;
+            background-color: #f0f4ff;
+            border: 1.5px solid #3b82f6;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgb(59 130 246 / 0.2);
+            outline-offset: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        body.dark-mode #idSelect, body.dark-mode #loggerSelect {
+            background-color: var(--select-bg-dark);
+            color: #e0e7ff;
+            border-color: #93c5fd;
+        }
+
+        #resetBtn {
+            padding: 10px 16px;
+            font-weight: bold;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            background-color: #3b82f6;
+            color: white;
+            transition: background-color 0.3s ease;
+        }
+
+        body.dark-mode #resetBtn {
+            background-color: #2563eb;
+        }
     </style>
 </head>
 <body>
-    <h2>ESP Logs</h2>
+    <label id="darkModeToggle">
+        🌙 <input type="checkbox" id="toggleDark" />
+    </label>
+    <h2>Websocket Logs</h2>
+    <h3 for="idFilter">Filter:</h3><br />
+    <select id="idSelect" multiple size="5"></select>
+    <h3>Verbundene Logger:</h3>
+    <select id="loggerSelect" size="5"></select><br />
+    <button id="resetBtn" disabled>Reset an ausgewählten Logger senden</button>
+
     <table>
-        <tr><th>Timestamp</th><th>ID</th><th>Message</th></tr>
+        <thead>
+            <tr><th>Timestamp</th><th>ID</th><th>Message</th></tr>
+        </thead>
         <tbody id="logTable">
             {% for line in lines %}
             <tr>
@@ -25,27 +146,179 @@
     </table>
 
     <script>
-        const socket = new WebSocket('ws://' + window.location.host + '/ws');
+        const socket = new WebSocket('ws://' + window.location.host + '/ws-view');
+        const idSelect = document.getElementById('idSelect');  // <--- hier!
+        idSelect.addEventListener('focus', updateOptionColors);
+        idSelect.addEventListener('blur', updateOptionColors);
+        window.addEventListener('DOMContentLoaded', () => {
+            const table = document.getElementById('logTable');
+            const ids = new Set();
 
+            for (let row of table.rows) {
+                const idCell = row.cells[1]; // zweite Spalte = ID
+                if (idCell && idCell.textContent) {
+                    ids.add(idCell.textContent);
+                    idCell.style.backgroundColor = getColorForID(idCell.textContent);
+                    idCell.style.fontWeight = "bold";
+                }
+            }
+
+            // Select mit IDs füllen
+            ids.forEach(id => {
+                const option = document.createElement('option');
+                option.value = id;
+                option.textContent = id;
+                idSelect.appendChild(option);
+            });
+                idSelect.focus();
+                idSelect.blur();
+
+                updateOptionColors();
+
+        });
+
+        // Filterfunktion für Zeilen anhand Auswahl im Select
+        function filterTableBySelectedIDs() {
+            const selectedOptions = Array.from(idSelect.selectedOptions).map(opt => opt.value);
+            const table = document.getElementById('logTable');
+            for (let row of table.rows) {
+                const idCell = row.cells[1];
+                if (!idCell) continue;
+                // Wenn keine Auswahl, alle zeigen, sonst nur Zeilen mit ID in Auswahl
+                if (selectedOptions.length === 0 || selectedOptions.includes(idCell.textContent)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            }
+        }
+        function getColorForID(id) {
+            // Einfache Farbzuweisung basierend auf Hash des IDs
+            const colors = ['#f87171', '#60a5fa', '#34d399', '#fbbf24', '#a78bfa', '#f472b6'];
+            let hash = 0;
+            for (let i = 0; i < id.length; i++) {
+                hash = id.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const index = Math.abs(hash) % colors.length;
+            return colors[index];
+        }
+
+        // EventListener für Select
+        idSelect.addEventListener('change', filterTableBySelectedIDs);
+
+        // WebSocket: neu eingehende Zeilen auch anhand Auswahl filtern
         socket.onmessage = function(event) {
             try {
                 const data = JSON.parse(event.data);
+                if (data.type === 'logger_list') {
+                    updateLoggerSelect(data.data);
+                    return; // nicht weiter verarbeiten
+                }
                 const timestamp = data.timestamp;
                 const message_id = data.id;
                 const message = data.message;
 
-                // Füge die neue Log-Nachricht als neue Zeile in die Tabelle ein
                 const table = document.getElementById('logTable');
-                const newRow = table.insertRow(0);  // Füge oben eine neue Zeile ein
-                newRow.innerHTML = `<td>${timestamp}</td><td>${message_id}</td><td>${message}</td>`;
+                const newRow = table.insertRow(0);
+                newRow.style.backgroundColor = document.body.classList.contains('dark-mode') 
+                ? getComputedStyle(document.body).getPropertyValue('--table-bg-dark') 
+                : '#fff';
+                newRow.style.transition = "background-color 0.3s ease";
+
+                const timestampCell = newRow.insertCell(0);
+                timestampCell.textContent = timestamp;
+
+                const idCell = newRow.insertCell(1);
+                idCell.textContent = message_id;
+                idCell.style.backgroundColor = getColorForID(message_id);
+                idCell.style.fontWeight = "bold";
+                idCell.style.textAlign = "center";
+                idCell.style.borderRadius = "5px";
+
+                const messageCell = newRow.insertCell(2);
+                messageCell.textContent = message;
+                messageCell.style.fontFamily = "monospace";
+                if (document.body.classList.contains('dark-mode')) {
+                    messageCell.style.color = "#e2e8f0";
+                } else {
+                    messageCell.style.color = "#555";
+                }
+
+                messageCell.style.wordBreak = "break-word";
+
+                // Prüfen, ob neue ID schon im Select ist - wenn nicht, hinzufügen
+                if (![...idSelect.options].some(opt => opt.value === message_id)) {
+                    const option = document.createElement('option');
+                    option.value = message_id;
+                    option.textContent = message_id;
+                    idSelect.appendChild(option);
+                }
+
+                filterTableBySelectedIDs(); // neue Zeile direkt filtern
             } catch (e) {
                 console.error("Fehler beim Verarbeiten der WebSocket-Nachricht:", e);
             }
         };
 
-        socket.onerror = function(error) {
-            console.error('WebSocket Error: ', error);
-        };
+        function updateOptionColors() {
+            const options = idSelect.options;
+            for (let i = 0; i < options.length; i++) {
+                const opt = options[i];
+                if (opt.selected) {
+                    // Farbe passend zur ID holen
+                    const color = getColorForID(opt.value);
+                    opt.style.backgroundColor = color;
+                    // Textfarbe kontrastreich (weiß oder schwarz) machen
+                    opt.style.color = getContrastYIQ(color);
+                } else {
+                    // Nicht ausgewählt: Standard-Styles zurücksetzen
+                    opt.style.backgroundColor = '';
+                    opt.style.color = '';
+                }
+            }
+        }
+
+        // Hilfsfunktion: YIQ-Kontrast berechnen, damit Text auf Hintergrund gut lesbar ist
+        function getContrastYIQ(hexcolor){
+            hexcolor = hexcolor.replace('#', '');
+            const r = parseInt(hexcolor.substr(0,2),16);
+            const g = parseInt(hexcolor.substr(2,2),16);
+            const b = parseInt(hexcolor.substr(4,2),16);
+            const yiq = ((r*299)+(g*587)+(b*114))/1000;
+            return (yiq >= 128) ? '#000' : '#fff';
+        }
+
+        // EventListener erweitern
+        idSelect.addEventListener('change', () => {
+            filterTableBySelectedIDs();
+            updateOptionColors();
+        });
+
+        function updateLoggerSelect(newLoggerList) {
+            const loggerSelect = document.getElementById('loggerSelect');
+            // Alte Optionen entfernen
+            loggerSelect.innerHTML = '';
+            // Neue Optionen einfügen
+            newLoggerList.forEach(loggerId => {
+                const option = document.createElement('option');
+                option.value = loggerId;
+                option.textContent = loggerId;
+                loggerSelect.appendChild(option);
+            });
+        }
+
+        const toggle = document.getElementById('toggleDark');
+
+        // Dark mode aus localStorage laden
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.body.classList.add('dark-mode');
+            toggle.checked = true;
+        }
+
+        toggle.addEventListener('change', () => {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', toggle.checked);
+        });
     </script>
 </body>
 </html>

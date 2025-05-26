@@ -95,7 +95,7 @@ void run_drone(DWMController* controller) {
      * When delay between two rangings is too short, wrong readings are to be expected
      * Probably due to one DWM1000 getting interfeered by the message of the other q._.p
      */
-    usleep(100000);
+    usleep(200000);
 
     distance = 0.0;
     tag->get_distance_to_anchor(ANCHOR_2, &distance);

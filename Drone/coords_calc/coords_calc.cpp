@@ -65,7 +65,7 @@ pos coords_calc(
     
     Eigen::VectorXd solution = A.colPivHouseholderQr().solve(b);
 
-    std::cout << solution << std::endl;
+    //std::cout << solution << std::endl;
 
     double x = solution[0];
     double y = solution[1];

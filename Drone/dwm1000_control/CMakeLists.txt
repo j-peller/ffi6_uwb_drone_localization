@@ -28,44 +28,55 @@ include_directories(${CMAKE_SOURCE_DIR}/../../shared/inc)
 # Add the source files
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 file(GLOB_RECURSE COORDS_SOURCES "../coords_calc/*.cpp")
+#file(GLOB_RECURSE TEST_SOURCES 
+#    "src/dwm1000_ctrl.cpp" 
+#    "src/dwm1000_ranging.cpp" 
+#    "src/dwm1000_ranging_drone.cpp" 
+#    "src/dw1000_modes.cpp" 
+#    "src/dw1000_time.cpp"
+#    "test/ranging_test_accuracy.cpp")
+
 file(GLOB_RECURSE TEST_SOURCES 
     "src/dwm1000_ctrl.cpp" 
     "src/dwm1000_ranging.cpp" 
     "src/dwm1000_ranging_drone.cpp" 
     "src/dw1000_modes.cpp" 
     "src/dw1000_time.cpp"
-    "test/ranging_test_accuracy.cpp")
+    "src/ws_logger.cpp"
+    "test/positioning_test.cpp")
 
 # 
 find_package(Eigen3 3.4 REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIB_WEBSOCKETS REQUIRED libwebsockets)
 
 # Add the executable
 add_executable(${PROJECT_NAME} ${SOURCES} ${COORDS_SOURCES})
 
 # Link the Eigen3 library
-target_link_libraries(${PROJECT_NAME} Eigen3::Eigen gpiod)
+target_link_libraries(${PROJECT_NAME} Eigen3::Eigen gpiod ${LIB_WEBSOCKETS_LIBRARIES})
 
 
 ## Enable testing
-#enable_testing()
-#
-## Google Test Integration
-#include(FetchContent)
-#FetchContent_Declare(
-#  googletest
-#  GIT_REPOSITORY https://github.com/google/googletest.git
-#  GIT_TAG        v1.16.0  # You can change the tag to the latest stable release
-#)
-#FetchContent_MakeAvailable(googletest)
-#
-## Include directories for Google Test
-#include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
-#
-## Add a test executable for unit tests
-#add_executable(RangingTest ${TEST_SOURCES})
-#
-## Link the test executable with Google Test and the project source
-#target_link_libraries(RangingTest gtest gtest_main gpiod Eigen3::Eigen)
-#
-## Run tests after the build
-#add_test(NAME RangingTest COMMAND RangingTest)
+enable_testing()
+
+# Google Test Integration
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG        v1.16.0  # You can change the tag to the latest stable release
+)
+FetchContent_MakeAvailable(googletest)
+
+# Include directories for Google Test
+include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+
+# Add a test executable for unit tests
+add_executable(PositioningTest ${TEST_SOURCES} ${COORDS_SOURCES})
+
+# Link the test executable with Google Test and the project source
+target_link_libraries(PositioningTest gtest gtest_main gpiod Eigen3::Eigen ${LIB_WEBSOCKETS_LIBRARIES})
+
+# Run tests after the build
+add_test(NAME PositioningTest COMMAND PositioningTest)

@@ -67,7 +67,6 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
     if (!instance->_gpio_chip) {
         perror("Failed to open GPIO Chip");
         delete instance;
-        close(fd);
         return NULL;
     }
 
@@ -76,7 +75,6 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
         perror("Failed to open GPIO Pin");
         gpiod_chip_close(instance->_gpio_chip);
         delete instance;
-        close(fd);
         return NULL;
     }
 
@@ -85,7 +83,6 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
         perror("Failed to open GPIO Pin");
         gpiod_chip_close(instance->_gpio_chip);
         delete instance;
-        close(fd);
         return NULL;
     }
 
@@ -104,7 +101,6 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
         perror("Failed to set IRQ GPIO Pin to INPUT");
         gpiod_chip_close(instance->_gpio_chip);
         delete instance;
-        close(fd);
         return NULL;
     }
 
@@ -114,14 +110,13 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
     if (device_id != 0xDECA0130) {
         fprintf(stderr, "DWM1000 returned invalid device ID: 0x%08X\n", device_id);
         delete instance;
-        close(fd);
         return NULL;
     }
 
     fprintf(stdout, "DWM1000 detected with ID: 0x%08X\n", device_id);
 
     /* Perform Soft Reset */
-    instance->soft_reset();
+    instance->softReset();
     usleep(100000); // wait for 100ms
 
     /* Test SPI Write - and Read Back Value */
@@ -132,7 +127,6 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
         fprintf(stderr, "DWM1000 returned invalid Short Address: 0x%04X\n", short_addr_read_back);
         perror("DWM1000 not detected or SPI not working");
         delete instance;
-        close(fd);
         return NULL;
     }
 
@@ -143,7 +137,6 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
         fprintf(stderr, "DWM1000 returned invalid PAN ID: 0x%04X\n", pan_id_read_back);
         perror("DWM1000 not detected or SPI not working");
         delete instance;
-        close(fd);
         return NULL;
     }
 
@@ -167,8 +160,8 @@ DWMController::~DWMController()
 {
     /* Place DWM1000 into a known reset state */
     if (_rst_line) {
-        fprintf(stdout, "Performing Hard Reset of DWM1000\n");
-        hard_reset();
+        fprintf(stdout, "Performing Hard Reset of DWM1000 with no recover\n");
+        hardReset();
     }
 
     /* Close GPIO Chip */
@@ -661,6 +654,8 @@ dwm_com_error_t DWMController::soft_reset()
     /* do we need to fully recover? idk. needs testing - for now, just set short addr */
     set_device_short_addr(_dev_instance.short_addr);
     set_device_pan_id(DEFAULT_PAN);
+
+    return SUCCESS;
 }
 
 
@@ -674,6 +669,8 @@ dwm_com_error_t DWMController::hard_reset()
 
     /* recover from hardreset... reinitialize DWM1000 */
     recover_from_reset();
+
+    return SUCCESS;
 }
 
 

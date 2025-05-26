@@ -70,15 +70,18 @@ void DWMRangingDrone::waitOutError()
 dwm_com_error_t DWMRangingDrone::get_distances_to_anchors(distances* distances)
 {
     dwm_com_error_t a1_status = get_distance_to_anchor(ANCHOR_1, &(distances->d1));
+    busywait_nanoseconds(200000000);
     dwm_com_error_t a2_status = get_distance_to_anchor(ANCHOR_2, &(distances->d2));
-    dwm_com_error_t a3_status = get_distance_to_anchor(ANCHOR_3, &(distances->d3));
-    dwm_com_error_t a4_status = get_distance_to_anchor(ANCHOR_4, &(distances->d4));
+    busywait_nanoseconds(200000000);
+    dwm_com_error_t a3_status = SUCCESS; //get_distance_to_anchor(ANCHOR_3, &(distances->d3));
+    busywait_nanoseconds(200000000);
+    dwm_com_error_t a4_status = SUCCESS; //get_distance_to_anchor(ANCHOR_4, &(distances->d4));
 
     if (
-        a1_status == dwm_com_error_t::ERROR
-            || a2_status == dwm_com_error_t::ERROR
-            || a3_status == dwm_com_error_t::ERROR
-            || a4_status == dwm_com_error_t::ERROR
+        a1_status != dwm_com_error_t::SUCCESS
+            || a2_status != dwm_com_error_t::SUCCESS
+            || a3_status != dwm_com_error_t::SUCCESS
+            || a4_status != dwm_com_error_t::SUCCESS
     ) {
         return dwm_com_error_t::ERROR;
     } else {

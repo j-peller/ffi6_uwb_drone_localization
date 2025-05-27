@@ -10,18 +10,19 @@
 #include <linux/spi/spidev.h>
 #include "INIReader.h"
 
-/* Global running flag */
-std::atomic<bool> running(true);
-
-/* Global state of the anchor service */
-std::atomic<anchor_state_t> current_state(RANGING);
-
 /* Anchor State */
 typedef enum {
     RANGING, 
     CALIBRATION,
     RESET
 } anchor_state_t;
+
+/* Global running flag */
+std::atomic<bool> running(true);
+
+/* Global state of the anchor service */
+std::atomic<anchor_state_t> current_state(RANGING);
+
 
 
 /* */
@@ -60,14 +61,14 @@ int main(int argc, char* argv[]) {
     }
 
     /* Create globally available logger (separate thread) */
-    WSLogger::get_instance(
-        reader.Get("logging", "log_server_ip", "0.0.0.0").c_str(),
-        reader.GetInteger("logging", "log_server_port", 0),
-        reader.GetInteger("anchor", "short_addr", 0xFFFF)
-    );
+    //WSLogger::get_instance(
+    //    reader.Get("logging", "log_server_ip", "0.0.0.0").c_str(),
+    //    reader.GetInteger("logging", "log_server_port", 0),
+    //    reader.GetInteger("anchor", "short_addr", 0xFFFF)
+    //);
 
     /* Print Test Message */
-    WS_LOG("WSLogger initialized for Anchor with ID: %d", reader.GetInteger("anchor", "short_addr", 0xFFFF));
+    //WS_LOG("WSLogger initialized for Anchor with ID: %d", reader.GetInteger("anchor", "short_addr", 0xFFFF));
 
     /* Get relevant Informations for our DWMController */
     dw1000_dev_instance_t device = {

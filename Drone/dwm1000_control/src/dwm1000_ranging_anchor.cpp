@@ -63,7 +63,6 @@ dwm_com_error_t DWMRangingAnchor::do_init_state()
 /**
  * @brief Complete actions taken in the response acknowledge state.
  * 
- * @param ack_rx_ts Timestamp of poll acknowledge reception.
  * @return dwm_com_error_t 
  */
 dwm_com_error_t DWMRangingAnchor::do_response_ack_state(uint16_t anchor_addr)
@@ -249,7 +248,7 @@ dwm_com_error_t DWMRangingAnchor::run_state_machine()
 
             case RangingState::RESP_ACK:
                 fprintf(stdout, "RESP\n");
-                ret = do_response_ack_state(ANCHOR_1);
+                ret = do_response_ack_state(_controller->_dev_instance.short_addr);
                 //HANDLE_STATE_TRANSITION(ret, RangingState::FINAL, RangingState::INIT, timeout_occurred);
                 if (ret == SUCCESS)
                     state = RangingState::FINAL;
@@ -269,7 +268,7 @@ dwm_com_error_t DWMRangingAnchor::run_state_machine()
 
             case RangingState::REPORT:
                 fprintf(stdout, "REPORT\n");
-                ret = do_report_state(ANCHOR_1);
+                ret = do_report_state(_controller->_dev_instance.short_addr);
                 //HANDLE_STATE_TRANSITION(ret, RangingState::COMPLETE, RangingState::INIT, timeout_occurred);
                 if (ret == SUCCESS)
                     state = RangingState::COMPLETE;

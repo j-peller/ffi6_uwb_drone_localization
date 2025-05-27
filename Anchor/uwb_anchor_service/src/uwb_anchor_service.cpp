@@ -10,18 +10,19 @@
 #include <linux/spi/spidev.h>
 #include "INIReader.h"
 
-/* Global running flag */
-std::atomic<bool> running(true);
-
-/* Global state of the anchor service */
-std::atomic<anchor_state_t> current_state(RANGING);
-
 /* Anchor State */
 typedef enum {
     RANGING, 
     CALIBRATION,
     RESET
 } anchor_state_t;
+
+/* Global running flag */
+std::atomic<bool> running(true);
+
+/* Global state of the anchor service */
+std::atomic<anchor_state_t> current_state(RANGING);
+
 
 
 /* */

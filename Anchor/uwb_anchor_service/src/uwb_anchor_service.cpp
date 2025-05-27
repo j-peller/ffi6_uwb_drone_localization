@@ -115,10 +115,9 @@ int main(int argc, char* argv[]) {
 
             case RESET:
                 /* After Softreset, Shortaddr must be set again */
-                anchor->soft_reset();
+                bool performHardReset = false;
+                anchor->perform_reset(performHardReset);
                 break;
-
-
         }
     }
 

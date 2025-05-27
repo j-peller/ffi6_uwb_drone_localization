@@ -33,6 +33,7 @@ class DWMRanging {
 public:
     static DWMRanging* create_instance(DWMController* controller);
     virtual ~DWMRanging() = 0;
+    dwm_com_error_t perform_reset(bool performHardReset) const;
     
 
 protected:

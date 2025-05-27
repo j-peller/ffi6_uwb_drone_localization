@@ -32,6 +32,7 @@ protected:
             .rst_gpio_pin = 27,
             .mode = getenv_int("DWM1000_MODE") == 1 ? JOPEL : THOTRO
         };
+
         controller = DWMController::create_instance(&device);
         if (controller == NULL) {
             fprintf(stderr, "Failed to create DWMController instance\n");
@@ -65,6 +66,7 @@ protected:
         }
     }
 
+    /* (0,0) Mittelpunkt */
     const pos POS_ANCHOR_1 = { .x = -0.25, .y = 0.25, .z = 0.0 };
     const pos POS_ANCHOR_2 = { .x = 0.25, .y = 0.25, .z = 0.0 };
     const pos POS_ANCHOR_3 = { .x = 0.25, .y = -0.25, .z = 0.0 };
@@ -72,8 +74,8 @@ protected:
 
     DWMRangingDrone* drone;
     DWMController* controller;
-    int sockfd;
     sockaddr_in serv_addr;
+    int sockfd;
 };
 
 

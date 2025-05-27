@@ -116,3 +116,13 @@ DWMRanging::DWMRanging(DWMController* controller)
 }
 
 
+/**
+ * 
+ */
+dwm_com_error_t DWMRanging::perform_reset(bool performHardReset) const
+{
+    if (performHardReset)
+        _controller->hard_reset();
+    else
+        _controller->soft_reset();
+}

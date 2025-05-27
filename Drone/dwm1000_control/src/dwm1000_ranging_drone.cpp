@@ -73,9 +73,9 @@ dwm_com_error_t DWMRangingDrone::get_distances_to_anchors(distances* distances)
     busywait_nanoseconds(200000000);
     dwm_com_error_t a2_status = get_distance_to_anchor(ANCHOR_2, &(distances->d2));
     busywait_nanoseconds(200000000);
-    dwm_com_error_t a3_status = SUCCESS; //get_distance_to_anchor(ANCHOR_3, &(distances->d3));
+    dwm_com_error_t a3_status = get_distance_to_anchor(ANCHOR_3, &(distances->d3));
     busywait_nanoseconds(200000000);
-    dwm_com_error_t a4_status = SUCCESS; //get_distance_to_anchor(ANCHOR_4, &(distances->d4));
+    dwm_com_error_t a4_status = get_distance_to_anchor(ANCHOR_4, &(distances->d4));
 
     if (
         a1_status != dwm_com_error_t::SUCCESS

@@ -6,10 +6,9 @@
 #include <stdint.h>	
 #include <time.h>
 
-#define DW1000_TIMEOUT  10000000      //< In Nanoseconds (10ms)
-#define RX_TIMEOUT      100000000      //< In Nanoseconds (100ms)
-#define RX_RETRY        2               //< Retrys -- Remove this? 
-#define MAX_RETRY_ON_FAILURE 0          //< Maximum number of retries on failure of a ranging operation
+#define RX_TIMEOUT_ANCHOR   120000000      //< In Nanoseconds (120ms)
+#define RX_TIMEOUT          100000000      //< In Nanoseconds (100ms)
+#define DW1000_TIMEOUT      10000000      //< In Nanoseconds (10ms)
 #define INITIAL_ANTENNA_DELAY 16482.37f  // Initial guess for TX and RX antenna delay
 
 typedef enum : uint8_t {

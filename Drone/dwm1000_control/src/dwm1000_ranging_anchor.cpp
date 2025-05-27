@@ -4,21 +4,6 @@
 
 
 /**
- * @brief Wait out errors to cause anchor to also go into an error state if a
- * response is expected.
- * 
- */
-void DWMRangingAnchor::waitOutError()
-{
-    timespec start, now;
-    clock_gettime(CLOCK_MONOTONIC_RAW,  &start);
-    do { 
-        clock_gettime(CLOCK_MONOTONIC_RAW,  &now);
-    } while (timespec_delta_nanoseconds(&now, &start) < (RX_RETRY * RX_TIMEOUT));
-}
-
-
-/**
  * @brief Complete actions taken in the init state of the ranging process.
  * 
  * @param init_tx_ts Timestamp of poll msg transmission.
@@ -39,7 +24,8 @@ dwm_com_error_t DWMRangingAnchor::do_init_state()
     while (true)
     {
         /* Poll for the reception of a packet */
-        ret = _controller->poll_rx_status();
+        //ret = _controller->poll_rx_status();
+        ret = _controller->poll_status_bit(SYS_STATUS_RXDFR, RX_TIMEOUT_ANCHOR);
         if (ret == TIMEOUT)
         {
             return ret;
@@ -147,7 +133,8 @@ dwm_com_error_t DWMRangingAnchor::do_final_state()
     while (true)
     {
         /* Poll for the reception of a packet */
-        ret = _controller->poll_rx_status();
+        //ret = _controller->poll_rx_status();
+        ret = _controller->poll_status_bit(SYS_STATUS_RXDFR, RX_TIMEOUT_ANCHOR);
         if (ret != SUCCESS)
         {
             return ret;

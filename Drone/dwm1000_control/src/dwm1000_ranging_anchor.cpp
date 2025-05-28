@@ -25,7 +25,7 @@ dwm_com_error_t DWMRangingAnchor::do_init_state()
     {
         /* Poll for the reception of a packet */
         //ret = _controller->poll_rx_status();
-        ret = _controller->poll_status_bit(SYS_STATUS_RXDFR, RX_TIMEOUT_ANCHOR);
+        ret = _controller->poll_status_bit(SYS_STATUS_RXDFR, ANC_RESP_DLY_DEFAULT_MS);
         if (ret == TIMEOUT)
         {
             return ret;
@@ -133,7 +133,7 @@ dwm_com_error_t DWMRangingAnchor::do_final_state()
     {
         /* Poll for the reception of a packet */
         //ret = _controller->poll_rx_status();
-        ret = _controller->poll_status_bit(SYS_STATUS_RXDFR, RX_TIMEOUT_ANCHOR);
+        ret = _controller->poll_status_bit(SYS_STATUS_RXDFR, ANC_RESP_DLY_DEFAULT_MS);
         if (ret != SUCCESS)
         {
             return ret;

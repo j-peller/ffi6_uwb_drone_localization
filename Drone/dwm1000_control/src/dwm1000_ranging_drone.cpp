@@ -161,6 +161,7 @@ dwm_com_error_t DWMRangingDrone::do_response_ack_state(DW1000Time& ack_rx_ts)
     while (true)
     {
         /* Poll for the reception of a packet */
+        //ret = _controller->poll_status_bit(SYS_STATUS_RXDFR, TAG_RESP_DLY_DEFAULT_MS);
         ret = _controller->poll_rx_status();
         if (ret != SUCCESS)
         {
@@ -261,6 +262,7 @@ dwm_com_error_t DWMRangingDrone::do_report_state(DW1000Time& esp_init_rx_ts, DW1
     while (true)
     {
         /* Poll for the reception of a packet */
+        //ret = _controller->poll_status_bit(SYS_STATUS_RXDFR, TAG_RESP_DLY_DEFAULT_MS);
         ret = _controller->poll_rx_status();
         if (ret != SUCCESS)
         {

@@ -6,6 +6,11 @@
 #include <stdint.h>	
 #include <time.h>
 
+// Default anchor response delay.
+#define ANC_RESP_DLY_DEFAULT_MS 150000000
+// Default tag response delay.
+#define TAG_RESP_DLY_DEFAULT_MS 200000000
+
 #define RX_TIMEOUT_ANCHOR   120000000      //< In Nanoseconds (120ms)
 #define RX_TIMEOUT          100000000      //< In Nanoseconds (100ms)
 #define DW1000_TIMEOUT      10000000      //< In Nanoseconds (10ms)

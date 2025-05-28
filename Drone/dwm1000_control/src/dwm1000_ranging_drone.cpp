@@ -47,19 +47,6 @@ double DWMRangingDrone::timestamps2distance(
     return time_of_flight.get_as_meters();
 }
 
-/**
- * @brief Wait out errors to cause anchor to also go into an error state if a
- * response is expected.
- * 
- */
-void DWMRangingDrone::waitOutError()
-{
-    timespec start, now;
-    clock_gettime(CLOCK_MONOTONIC_RAW,  &start);
-    do { 
-        clock_gettime(CLOCK_MONOTONIC_RAW,  &now);
-    } while (timespec_delta_nanoseconds(&now, &start) < (RX_RETRY * RX_TIMEOUT));
-}
 
 /**
  * @brief Perform ranging with all 4 anchors.
@@ -97,7 +84,7 @@ dwm_com_error_t DWMRangingDrone::get_distances_to_anchors(distances* distances)
  * @param anchor_addr Address of current anchor.
  * @return dwm_com_error_t 
  */
-dwm_com_error_t DWMRangingDrone::do_init_state(DW1000Time& init_tx_ts, uint16_t anchor_addr)
+dwm_com_error_t DWMRangingDrone::do_init_state(uint16_t anchor_addr)
 {
     dwm_com_error_t ret = SUCCESS;
 
@@ -127,14 +114,14 @@ dwm_com_error_t DWMRangingDrone::do_init_state(DW1000Time& init_tx_ts, uint16_t 
     _controller->start_transmission();
     
     /* Poll for completion of transmission */
-    ret = _controller->poll_tx_status();
-    if (ret != SUCCESS) {
-        fprintf(stdout, "Error polling for TX Status: %d\n", ret);
-        return ret;
-    }
+    //ret = _controller->poll_tx_status();
+    //if (ret != SUCCESS) {
+    //    fprintf(stdout, "Error polling for TX Status: %d\n", ret);
+    //    return ret;
+    //}
     
     /* Note time of transmission only if successfull */
-    _controller->get_tx_timestamp(init_tx_ts);
+    //_controller->get_tx_timestamp(init_tx_ts);
 
     return SUCCESS;
 }
@@ -146,7 +133,7 @@ dwm_com_error_t DWMRangingDrone::do_init_state(DW1000Time& init_tx_ts, uint16_t 
  * @param ack_rx_ts Timestamp of poll acknowledge reception.
  * @return dwm_com_error_t 
  */
-dwm_com_error_t DWMRangingDrone::do_response_ack_state(DW1000Time& ack_rx_ts)
+dwm_com_error_t DWMRangingDrone::do_response_ack_state(DW1000Time& init_tx_ts, DW1000Time& ack_rx_ts)
 {
     twr_message_t* ack_return = NULL;
     uint16_t ack_len;
@@ -161,8 +148,8 @@ dwm_com_error_t DWMRangingDrone::do_response_ack_state(DW1000Time& ack_rx_ts)
     while (true)
     {
         /* Poll for the reception of a packet */
-        //ret = _controller->poll_status_bit(SYS_STATUS_RXDFR, TAG_RESP_DLY_DEFAULT_MS);
-        ret = _controller->poll_rx_status();
+        ret = _controller->poll_status_bit(SYS_STATUS_RXDFR, TAG_RESP_DLY_DEFAULT_MS);
+        //ret = _controller->poll_rx_status();
         if (ret != SUCCESS)
         {
             return ret;
@@ -180,6 +167,7 @@ dwm_com_error_t DWMRangingDrone::do_response_ack_state(DW1000Time& ack_rx_ts)
     }
 
     /* Note Timestamp of Reception */
+    _controller->get_tx_timestamp(init_tx_ts);
     _controller->get_rx_timestamp(ack_rx_ts);
     //fprintf(stdout, "Got ack_rx_ts: %ld\n", ack_rx_ts.get_timestamp());
 
@@ -197,7 +185,7 @@ dwm_com_error_t DWMRangingDrone::do_response_ack_state(DW1000Time& ack_rx_ts)
  * @param anchor_addr Address of current anchor.
  * @return dwm_com_error_t 
  */
-dwm_com_error_t DWMRangingDrone::do_final_state(DW1000Time& fin_tx_ts, uint16_t anchor_addr) 
+dwm_com_error_t DWMRangingDrone::do_final_state(uint16_t anchor_addr) 
 {
     dwm_com_error_t ret = SUCCESS;
 
@@ -226,14 +214,14 @@ dwm_com_error_t DWMRangingDrone::do_final_state(DW1000Time& fin_tx_ts, uint16_t 
     _controller->start_transmission();
 
     /* Poll for completion of transmission */
-    ret = _controller->poll_tx_status();
-    if (ret != SUCCESS) {
-        //waitOutError();
-        return ret;
-    }
+    //ret = _controller->poll_tx_status();
+    //if (ret != SUCCESS) {
+    //    //waitOutError();
+    //    return ret;
+    //}
 
     /* Note time of transmission */
-    _controller->get_tx_timestamp(fin_tx_ts);
+    //_controller->get_tx_timestamp(fin_tx_ts);
     //fprintf(stdout, "Got fin_tx_ts: %ld\n", fin_tx_ts.get_timestamp());
 
     return SUCCESS;
@@ -248,7 +236,7 @@ dwm_com_error_t DWMRangingDrone::do_final_state(DW1000Time& fin_tx_ts, uint16_t 
  * @param esp_fin_rx_ts Timestamp of final msg reception.
  * @return dwm_com_error_t 
  */
-dwm_com_error_t DWMRangingDrone::do_report_state(DW1000Time& esp_init_rx_ts, DW1000Time& esp_resp_tx_ts, DW1000Time& esp_fin_rx_ts) 
+dwm_com_error_t DWMRangingDrone::do_report_state(DW1000Time& fin_tx_ts, DW1000Time& esp_init_rx_ts, DW1000Time& esp_resp_tx_ts, DW1000Time& esp_fin_rx_ts) 
 {
     twr_message_t* rprt_return = NULL;
     uint16_t ack_len;
@@ -262,8 +250,7 @@ dwm_com_error_t DWMRangingDrone::do_report_state(DW1000Time& esp_init_rx_ts, DW1
     while (true)
     {
         /* Poll for the reception of a packet */
-        //ret = _controller->poll_status_bit(SYS_STATUS_RXDFR, TAG_RESP_DLY_DEFAULT_MS);
-        ret = _controller->poll_rx_status();
+        ret = _controller->poll_status_bit(SYS_STATUS_RXDFR, TAG_RESP_DLY_DEFAULT_MS);
         if (ret != SUCCESS)
         {
             //waitOutError();
@@ -294,6 +281,9 @@ dwm_com_error_t DWMRangingDrone::do_report_state(DW1000Time& esp_init_rx_ts, DW1
                 break;
         }
     }
+
+    /**/
+    _controller->get_tx_timestamp(fin_tx_ts);
 
     /* Note Timestamps recorded by Anchor */
     esp_init_rx_ts.set_timestamp(rprt_return->payload.report.pollRx);
@@ -335,7 +325,7 @@ dwm_com_error_t DWMRangingDrone::get_distance_to_anchor(uint16_t anchor_addr, do
         switch (state) {
             case RangingState::INIT:
                 fprintf(stdout, "INIT\n");
-                ret = do_init_state(t_sp, anchor_addr);
+                ret = do_init_state(anchor_addr);
                 //HANDLE_STATE_TRANSITION(ret, RangingState::RESP_ACK, RangingState::INIT, timeout_occurred);
                 if (ret == SUCCESS)
                     state = RangingState::RESP_ACK;
@@ -345,7 +335,7 @@ dwm_com_error_t DWMRangingDrone::get_distance_to_anchor(uint16_t anchor_addr, do
 
             case RangingState::RESP_ACK:
                 fprintf(stdout, "RESP\n");
-                ret = do_response_ack_state(t_ra);
+                ret = do_response_ack_state(t_sp, t_ra);
                 //HANDLE_STATE_TRANSITION(ret, RangingState::FINAL, RangingState::INIT, timeout_occurred);
                 if (ret == SUCCESS)
                     state = RangingState::FINAL;
@@ -355,7 +345,7 @@ dwm_com_error_t DWMRangingDrone::get_distance_to_anchor(uint16_t anchor_addr, do
 
             case RangingState::FINAL:
                 fprintf(stdout, "FINAL\n");
-                ret = do_final_state(t_sf, anchor_addr);
+                ret = do_final_state(anchor_addr);
                 //HANDLE_STATE_TRANSITION(ret, RangingState::REPORT, RangingState::INIT, timeout_occurred);
                 if (ret == SUCCESS)
                     state = RangingState::REPORT;
@@ -365,7 +355,7 @@ dwm_com_error_t DWMRangingDrone::get_distance_to_anchor(uint16_t anchor_addr, do
 
             case RangingState::REPORT:
                 fprintf(stdout, "REPORT\n");
-                ret = do_report_state(t_rp, t_sa, t_rf);
+                ret = do_report_state(t_sf, t_rp, t_sa, t_rf);
                 //HANDLE_STATE_TRANSITION(ret, RangingState::COMPLETE, RangingState::INIT, timeout_occurred);
                 if (ret == SUCCESS)
                     state = RangingState::COMPLETE;

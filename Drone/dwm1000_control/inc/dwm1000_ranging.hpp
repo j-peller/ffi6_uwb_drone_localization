@@ -78,10 +78,10 @@ private:
     DWMRangingDrone() : DWMRanging() {};
     DWMRangingDrone(DWMController* controller) : DWMRanging(controller) {};
 
-    dwm_com_error_t do_init_state(DW1000Time& t_sp, uint16_t anchor_addr);
-    dwm_com_error_t do_response_ack_state(DW1000Time& t_ra);
-    dwm_com_error_t do_final_state(DW1000Time& t_sf, uint16_t anchor_addr);
-    dwm_com_error_t do_report_state(DW1000Time& t_rp, DW1000Time& t_sa, DW1000Time& t_rf);
+    dwm_com_error_t do_init_state(uint16_t anchor_addr);
+    dwm_com_error_t do_response_ack_state(DW1000Time& t_sp, DW1000Time& t_ra);
+    dwm_com_error_t do_final_state(uint16_t anchor_addr);
+    dwm_com_error_t do_report_state(DW1000Time& t_sf, DW1000Time& t_rp, DW1000Time& t_sa, DW1000Time& t_rf);
 
     double timestamps2distance( DW1000Time& t_sp, DW1000Time& t_ra, DW1000Time& t_sf,
         DW1000Time& t_rp, DW1000Time& t_sa, DW1000Time& t_rf);

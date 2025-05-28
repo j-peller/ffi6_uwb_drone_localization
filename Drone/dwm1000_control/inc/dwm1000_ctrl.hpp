@@ -153,7 +153,8 @@ extern const dw1000_mode_t JOPEL110;
  */
 class DWMController {
 
-friend class DWMRanging;
+friend class DWMRangingAnchor;
+friend class DWMRangingDrone;
 
 public:
     static DWMController*   create_instance(dw1000_dev_instance_t* spi_dev);

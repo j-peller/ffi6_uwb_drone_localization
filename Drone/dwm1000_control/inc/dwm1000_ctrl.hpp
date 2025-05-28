@@ -153,6 +153,7 @@ extern const dw1000_mode_t JOPEL110;
  */
 class DWMController {
 
+friend class DWMRanging;
 friend class DWMRangingAnchor;
 friend class DWMRangingDrone;
 

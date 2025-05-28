@@ -94,17 +94,17 @@ dwm_com_error_t DWMRangingAnchor::do_response_ack_state(uint16_t anchor_addr)
     _controller->start_transmission();
 
     /* Poll for completion of transmission */
-    ret = _controller->poll_tx_status();    
-    if (ret != SUCCESS) {
-        fprintf(stdout, "Error while sending Response: %d\n", ret);
-        return ret;
-    }
+    //ret = _controller->poll_tx_status();    
+    //if (ret != SUCCESS) {
+    //    fprintf(stdout, "Error while sending Response: %d\n", ret);
+    //    return ret;
+    //}
 
-    /* Note time of transmission */
-    _controller->get_tx_timestamp(_resp_tx_ts);
+    ///* Note time of transmission */
+    //_controller->get_tx_timestamp(_resp_tx_ts);
 
     #if DEBUG
-    fprintf(stdout, "Got resp_tx_ts: %ld\n", _resp_tx_ts.get_timestamp());
+    //fprintf(stdout, "Got resp_tx_ts: %ld\n", _resp_tx_ts.get_timestamp());
     #endif
 
     return dwm_com_error_t::SUCCESS;
@@ -155,6 +155,7 @@ dwm_com_error_t DWMRangingAnchor::do_final_state()
     }
 
     /* Remember receive timestamp */
+    _controller->get_tx_timestamp(_resp_tx_ts);
     _controller->get_rx_timestamp(_final_rx_ts);
 
     #if DEBUG

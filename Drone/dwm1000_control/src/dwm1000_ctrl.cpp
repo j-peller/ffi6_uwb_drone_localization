@@ -863,7 +863,7 @@ dwm_com_error_t DWMController::test_receiving_timestamp(DW1000Time& rx_time)
     }
 
     /* Poll for successfull reception of a packet */
-    ret = poll_rx_status();
+    ret = poll_status_bit(SYS_STATUS_RXDFR, ANC_RESP_DLY_DEFAULT_MS);
     if (ret != SUCCESS) {
         return ret;
     }
@@ -969,7 +969,7 @@ dwm_com_error_t DWMController::wait_for_antenna_calibration_value(uint16_t* valu
     while (true)
     {
         /* Poll for the reception of a packet - maybe use different timeout with poll_status_mask() directly */
-        ret = poll_status_bit(SYS_STATUS_RXDFR, 500000000);
+        ret = poll_status_bit(SYS_STATUS_RXDFR, ANC_RESP_DLY_DEFAULT_MS);
         if (ret != SUCCESS)
         {
             //waitOutError();

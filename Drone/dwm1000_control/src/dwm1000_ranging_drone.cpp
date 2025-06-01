@@ -41,7 +41,9 @@ double DWMRangingDrone::timestamps2distance(
     DW1000Time time_of_flight = ((t_round1 * t_round2) - (t_reply1 * t_reply2)) / (t_round1 + t_round2 + t_reply1 + t_reply2);
 
 
+    #if DEBUG
     fprintf(stdout, "ToF: %ld\n", time_of_flight.get_timestamp());
+    #endif
 
     // calculate and return distance from TOF
     return time_of_flight.get_as_meters();
@@ -56,24 +58,25 @@ double DWMRangingDrone::timestamps2distance(
  */
 dwm_com_error_t DWMRangingDrone::get_distances_to_anchors(distances* distances)
 {
-    dwm_com_error_t a1_status = get_distance_to_anchor(ANCHOR_1, &(distances->d1));
-    busywait_nanoseconds(200000000);
-    dwm_com_error_t a2_status = get_distance_to_anchor(ANCHOR_2, &(distances->d2));
-    busywait_nanoseconds(200000000);
-    dwm_com_error_t a3_status = get_distance_to_anchor(ANCHOR_3, &(distances->d3));
-    busywait_nanoseconds(200000000);
-    dwm_com_error_t a4_status = get_distance_to_anchor(ANCHOR_4, &(distances->d4));
+    dwm_com_error_t ret = SUCCESS;
 
-    if (
-        a1_status != dwm_com_error_t::SUCCESS
-            || a2_status != dwm_com_error_t::SUCCESS
-            || a3_status != dwm_com_error_t::SUCCESS
-            || a4_status != dwm_com_error_t::SUCCESS
-    ) {
-        return dwm_com_error_t::ERROR;
-    } else {
-        return dwm_com_error_t::SUCCESS;
+    if ( (ret = get_distance_to_anchor(ANCHOR_1, &(distances->d1))) != dwm_com_error_t::SUCCESS) {
+        return ret;
     }
+    
+    if ( (ret = get_distance_to_anchor(ANCHOR_2, &(distances->d2))) != dwm_com_error_t::SUCCESS) {
+        return ret;
+    }
+    
+    if ( (ret = get_distance_to_anchor(ANCHOR_3, &(distances->d3))) != dwm_com_error_t::SUCCESS) {
+        return ret;
+    }
+    
+    if ( (ret = get_distance_to_anchor(ANCHOR_4, &(distances->d4))) != dwm_com_error_t::SUCCESS) {
+        return ret;
+    }
+
+    return ret;
 }
 
 
@@ -113,16 +116,6 @@ dwm_com_error_t DWMRangingDrone::do_init_state(uint16_t anchor_addr)
     /* Start transmission of the answer */
     _controller->start_transmission();
     
-    /* Poll for completion of transmission */
-    //ret = _controller->poll_tx_status();
-    //if (ret != SUCCESS) {
-    //    fprintf(stdout, "Error polling for TX Status: %d\n", ret);
-    //    return ret;
-    //}
-    
-    /* Note time of transmission only if successfull */
-    //_controller->get_tx_timestamp(init_tx_ts);
-
     return SUCCESS;
 }
 
@@ -139,7 +132,6 @@ dwm_com_error_t DWMRangingDrone::do_response_ack_state(DW1000Time& init_tx_ts, D
     uint16_t ack_len;
     dwm_com_error_t ret = SUCCESS;  
 
-
     /* Start reception of packets */
     //_controller->start_receiving();
     //_controller->set_receiver_auto_reenable(true);
@@ -149,9 +141,7 @@ dwm_com_error_t DWMRangingDrone::do_response_ack_state(DW1000Time& init_tx_ts, D
     {
         /* Poll for the reception of a packet */
         ret = _controller->poll_status_bit(SYS_STATUS_RXDFR, TAG_RESP_DLY_DEFAULT_MS);
-        //ret = _controller->poll_rx_status();
-        if (ret != SUCCESS)
-        {
+        if (ret != SUCCESS) {
             return ret;
         } else {
             ret = _controller->read_received_data(&ack_len, (uint8_t**)&ack_return);
@@ -166,10 +156,9 @@ dwm_com_error_t DWMRangingDrone::do_response_ack_state(DW1000Time& init_tx_ts, D
         }
     }
 
-    /* Note Timestamp of Reception */
+    /* Note Timestamp of Reception and Transmission or prev. Poll */
     _controller->get_tx_timestamp(init_tx_ts);
     _controller->get_rx_timestamp(ack_rx_ts);
-    //fprintf(stdout, "Got ack_rx_ts: %ld\n", ack_rx_ts.get_timestamp());
 
     /* cleanup */
     delete ack_return;
@@ -212,17 +201,6 @@ dwm_com_error_t DWMRangingDrone::do_final_state(uint16_t anchor_addr)
 
     /* Start transmission of the answer */
     _controller->start_transmission();
-
-    /* Poll for completion of transmission */
-    //ret = _controller->poll_tx_status();
-    //if (ret != SUCCESS) {
-    //    //waitOutError();
-    //    return ret;
-    //}
-
-    /* Note time of transmission */
-    //_controller->get_tx_timestamp(fin_tx_ts);
-    //fprintf(stdout, "Got fin_tx_ts: %ld\n", fin_tx_ts.get_timestamp());
 
     return SUCCESS;
 }
@@ -282,22 +260,22 @@ dwm_com_error_t DWMRangingDrone::do_report_state(DW1000Time& fin_tx_ts, DW1000Ti
         }
     }
 
-    /**/
+    /* Collect time of transmission of prev. final state */
     _controller->get_tx_timestamp(fin_tx_ts);
 
-    /* Note Timestamps recorded by Anchor */
+    /* Note Timestamps recorded by the Anchor */
     esp_init_rx_ts.set_timestamp(rprt_return->payload.report.pollRx);
     esp_resp_tx_ts.set_timestamp(rprt_return->payload.report.responseTx);
     esp_fin_rx_ts.set_timestamp(rprt_return->payload.report.finalRx);
 
     #if DEBUG
-    fprintf(stdout, "Got esp_init_rx_ts: %ld\n", esp_fin_rx_ts.get_timestamp());
-    fprintf(stdout, "Got esp_init_rx_tx in msg: %02X %02X %02X %02X %02X\n", 
-            rprt_return->payload.report.finalRx[0],
-            rprt_return->payload.report.finalRx[1],
-            rprt_return->payload.report.finalRx[2],
-            rprt_return->payload.report.finalRx[3],
-            rprt_return->payload.report.finalRx[4]);
+    //fprintf(stdout, "Got esp_init_rx_ts: %ld\n", esp_fin_rx_ts.get_timestamp());
+    //fprintf(stdout, "Got esp_init_rx_tx in msg: %02X %02X %02X %02X %02X\n", 
+    //        rprt_return->payload.report.finalRx[0],
+    //        rprt_return->payload.report.finalRx[1],
+    //        rprt_return->payload.report.finalRx[2],
+    //        rprt_return->payload.report.finalRx[3],
+    //        rprt_return->payload.report.finalRx[4]);
     #endif
 
     /* cleanup */
@@ -326,7 +304,6 @@ dwm_com_error_t DWMRangingDrone::get_distance_to_anchor(uint16_t anchor_addr, do
             case RangingState::INIT:
                 fprintf(stdout, "INIT\n");
                 ret = do_init_state(anchor_addr);
-                //HANDLE_STATE_TRANSITION(ret, RangingState::RESP_ACK, RangingState::INIT, timeout_occurred);
                 if (ret == SUCCESS)
                     state = RangingState::RESP_ACK;
                 else
@@ -336,7 +313,6 @@ dwm_com_error_t DWMRangingDrone::get_distance_to_anchor(uint16_t anchor_addr, do
             case RangingState::RESP_ACK:
                 fprintf(stdout, "RESP\n");
                 ret = do_response_ack_state(t_sp, t_ra);
-                //HANDLE_STATE_TRANSITION(ret, RangingState::FINAL, RangingState::INIT, timeout_occurred);
                 if (ret == SUCCESS)
                     state = RangingState::FINAL;
                 else
@@ -346,7 +322,6 @@ dwm_com_error_t DWMRangingDrone::get_distance_to_anchor(uint16_t anchor_addr, do
             case RangingState::FINAL:
                 fprintf(stdout, "FINAL\n");
                 ret = do_final_state(anchor_addr);
-                //HANDLE_STATE_TRANSITION(ret, RangingState::REPORT, RangingState::INIT, timeout_occurred);
                 if (ret == SUCCESS)
                     state = RangingState::REPORT;
                 else
@@ -356,7 +331,6 @@ dwm_com_error_t DWMRangingDrone::get_distance_to_anchor(uint16_t anchor_addr, do
             case RangingState::REPORT:
                 fprintf(stdout, "REPORT\n");
                 ret = do_report_state(t_sf, t_rp, t_sa, t_rf);
-                //HANDLE_STATE_TRANSITION(ret, RangingState::COMPLETE, RangingState::INIT, timeout_occurred);
                 if (ret == SUCCESS)
                     state = RangingState::COMPLETE;
                 else
@@ -367,18 +341,12 @@ dwm_com_error_t DWMRangingDrone::get_distance_to_anchor(uint16_t anchor_addr, do
                 return SUCCESS;
         }
 
+        #if DEBUG
         fprintf(stdout, "Cur State: %d\n", (int)state);
-        //if (timeout_occurred) {
-        //    retries++;
-        //    timeout_occurred = false;
-        //    if (retries >= MAX_RETRY_ON_FAILURE) {
-        //        fprintf(stdout, "Max retries reached. Exiting...\n");
-        //        return dwm_com_error_t::ERROR;
-        //    }
-        //    //waitOutError();
-        //}
+        #endif 
     }
 
+    /* Calculate ToF */
     *distance = timestamps2distance(
         t_sp, t_ra, t_sf,
         t_rp, t_sa, t_rf 

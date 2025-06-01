@@ -30,7 +30,8 @@ protected:
             .gpiod_chip = "/dev/gpiochip4",
             .irq_gpio_pin = 26,
             .rst_gpio_pin = 27,
-            .mode = getenv_int("DWM1000_MODE") == 1 ? JOPEL : THOTRO
+            .mode = getenv_int("DWM1000_MODE") == 1 ? JOPEL : THOTRO,
+            .antenna_delay = getenv_int("DWM1000_ANTENNA_DELAY") > 0 ? getenv_int("DWM1000_ANTENNA_DELAY") : INITIAL_ANTENNA_DELAY
         };
 
         controller = DWMController::create_instance(&device);

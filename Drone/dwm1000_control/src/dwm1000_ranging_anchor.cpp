@@ -1,6 +1,5 @@
 #include "../inc/dwm1000_ranging.hpp"
 #include "../inc/dw1000_time.hpp"
-#include <time.h>
 
 
 /**
@@ -18,19 +17,16 @@ dwm_com_error_t DWMRangingAnchor::do_init_state()
 
     /* Start reception of packets */
     _controller->start_receiving();
-    //_controller->set_receiver_auto_reenable(true);
     
     // poll and check for error
     while (true)
     {
         /* Poll for the reception of a packet */
-        //ret = _controller->poll_rx_status();
         ret = _controller->poll_status_bit(SYS_STATUS_RXDFR, ANC_RESP_DLY_DEFAULT_MS);
         if (ret == TIMEOUT)
         {
             return ret;
         } else if (ret == ERROR) {
-            //waitOutError();
             return ret;
         } else {
             ret = _controller->read_received_data(&ack_len, (uint8_t**)&ack_return);
@@ -93,21 +89,7 @@ dwm_com_error_t DWMRangingAnchor::do_response_ack_state(uint16_t anchor_addr)
     /* Start transmission of the answer */
     _controller->start_transmission();
 
-    /* Poll for completion of transmission */
-    //ret = _controller->poll_tx_status();    
-    //if (ret != SUCCESS) {
-    //    fprintf(stdout, "Error while sending Response: %d\n", ret);
-    //    return ret;
-    //}
-
-    ///* Note time of transmission */
-    //_controller->get_tx_timestamp(_resp_tx_ts);
-
-    #if DEBUG
-    //fprintf(stdout, "Got resp_tx_ts: %ld\n", _resp_tx_ts.get_timestamp());
-    #endif
-
-    return dwm_com_error_t::SUCCESS;
+    return SUCCESS;
 }
 
 
@@ -132,7 +114,6 @@ dwm_com_error_t DWMRangingAnchor::do_final_state()
     while (true)
     {
         /* Poll for the reception of a packet */
-        //ret = _controller->poll_rx_status();
         ret = _controller->poll_status_bit(SYS_STATUS_RXDFR, ANC_RESP_DLY_DEFAULT_MS);
         if (ret != SUCCESS)
         {
@@ -154,11 +135,12 @@ dwm_com_error_t DWMRangingAnchor::do_final_state()
         }
     }
 
-    /* Remember receive timestamp */
+    /* Remember receive and transmit timestamp */
     _controller->get_tx_timestamp(_resp_tx_ts);
     _controller->get_rx_timestamp(_final_rx_ts);
 
     #if DEBUG
+    fprintf(stdout, "Sent resp_tx_ts: %ld\n", _resp_tx_ts.get_timestamp());
     fprintf(stdout, "Got final_rx_ts: %ld\n", _final_rx_ts.get_timestamp());
     #endif
 
@@ -196,13 +178,13 @@ dwm_com_error_t DWMRangingAnchor::do_report_state(uint16_t anchor_addr)
     _final_rx_ts.get_timestamp(report_msg.payload.report.finalRx);
 
     #if DEBUG
-    fprintf(stdout, "finalRx in DW100Time: %ld\n", _final_rx_ts.get_timestamp());
-    fprintf(stdout, "pollRx in msg: %02X %02X %02X %02X %02X\n", 
-            report_msg.payload.report.finalRx[0],
-            report_msg.payload.report.finalRx[1],
-            report_msg.payload.report.finalRx[2],
-            report_msg.payload.report.finalRx[3],
-            report_msg.payload.report.finalRx[4]);
+    //fprintf(stdout, "finalRx in DW100Time: %ld\n", _final_rx_ts.get_timestamp());
+    //fprintf(stdout, "pollRx in msg: %02X %02X %02X %02X %02X\n", 
+    //        report_msg.payload.report.finalRx[0],
+    //        report_msg.payload.report.finalRx[1],
+    //        report_msg.payload.report.finalRx[2],
+    //        report_msg.payload.report.finalRx[3],
+    //        report_msg.payload.report.finalRx[4]);
     #endif
 
     /* disable receiver auto reenable */
@@ -214,7 +196,7 @@ dwm_com_error_t DWMRangingAnchor::do_report_state(uint16_t anchor_addr)
     /* Start transmission of the answer */
     _controller->start_transmission();
 
-    /* Poll for completion of transmission */
+    /* Poll for completion of transmission, otherwise transmission will be interrupted by the next reception cycle */
     ret = _controller->poll_tx_status();    
     if (ret != SUCCESS) {
         fprintf(stdout, "Error while sending Response: %d\n", ret);
@@ -240,7 +222,6 @@ dwm_com_error_t DWMRangingAnchor::run_state_machine()
             case RangingState::INIT:
                 fprintf(stdout, "INIT\n");
                 ret = do_init_state();
-                //HANDLE_STATE_TRANSITION(ret, RangingState::RESP_ACK, RangingState::INIT, timeout_occurred);
                 if (ret == SUCCESS)
                     state = RangingState::RESP_ACK;
                 else
@@ -250,7 +231,6 @@ dwm_com_error_t DWMRangingAnchor::run_state_machine()
             case RangingState::RESP_ACK:
                 fprintf(stdout, "RESP\n");
                 ret = do_response_ack_state(_controller->_dev_instance.short_addr);
-                //HANDLE_STATE_TRANSITION(ret, RangingState::FINAL, RangingState::INIT, timeout_occurred);
                 if (ret == SUCCESS)
                     state = RangingState::FINAL;
                 else
@@ -260,7 +240,6 @@ dwm_com_error_t DWMRangingAnchor::run_state_machine()
             case RangingState::FINAL:
                 fprintf(stdout, "FINAL\n");
                 ret = do_final_state();
-                //HANDLE_STATE_TRANSITION(ret, RangingState::REPORT, RangingState::INIT, timeout_occurred);
                 if (ret == SUCCESS)
                     state = RangingState::REPORT;
                 else
@@ -270,7 +249,6 @@ dwm_com_error_t DWMRangingAnchor::run_state_machine()
             case RangingState::REPORT:
                 fprintf(stdout, "REPORT\n");
                 ret = do_report_state(_controller->_dev_instance.short_addr);
-                //HANDLE_STATE_TRANSITION(ret, RangingState::COMPLETE, RangingState::INIT, timeout_occurred);
                 if (ret == SUCCESS)
                     state = RangingState::COMPLETE;
                 else
@@ -281,19 +259,12 @@ dwm_com_error_t DWMRangingAnchor::run_state_machine()
                 return SUCCESS;
         }
 
+        #if DEBUG
         fprintf(stdout, "Cur State: %d\n", (int)state);
-        //if (timeout_occurred) {
-        //    retries++;
-        //    timeout_occurred = false;
-        //    if (retries >= MAX_RETRY_ON_FAILURE) {
-        //        fprintf(stdout, "Max retries reached. Exiting...\n");
-        //        return dwm_com_error_t::ERROR;
-        //    }
-        //    //waitOutError();
-        //}
+        #endif
     }
 
-    return dwm_com_error_t::SUCCESS;
+    return SUCCESS;
 }
 
 
@@ -304,8 +275,6 @@ dwm_com_error_t DWMRangingAnchor::calibrate_antenna_delay(int max_iterations)
 {
     double antd = INITIAL_ANTENNA_DELAY; // Initial guess for TX and RX antenna delay
     uint16_t tmp = 0;
-
-    /* TODO: Adjust RX Power Level for antenna Calibration */
 
     int i = 0;
     while (i < max_iterations) {

@@ -10,6 +10,8 @@ RUN apt-get update && apt-get install -y \
     cmake \
     libeigen3-dev \
     libgpiod-dev \
+    libinih-dev \
+    libwebsockets-dev \
     git
 
 # Set working directory when copying files to include shared folder

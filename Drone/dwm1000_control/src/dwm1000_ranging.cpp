@@ -35,7 +35,8 @@ DWMRanging* DWMRanging::create_instance(DWMController* ctrl)
             .gpiod_chip         = getenv_str("DWM1000_GPIO_DEV"),
             .irq_gpio_pin       = getenv_int("DWM1000_IRQ_PIN"),
             .rst_gpio_pin       = getenv_int("DWM1000_RST_PIN"),
-            .mode               = (dw1000_mode_enum_t)getenv_int("DWM1000_MODE")
+            .mode               = (dw1000_mode_enum_t)getenv_int("DWM1000_MODE"),
+            .antenna_delay      = getenv_int("DWM1000_ANTENNA_DELAY") > 0 ? getenv_int("DWM1000_ANTENNA_DELAY") : INITIAL_ANTENNA_DELAY
         };
 
         controller = DWMController::create_instance(&device);
@@ -70,8 +71,8 @@ DWMRanging* DWMRanging::create_instance(DWMController* ctrl)
     controller->set_irq_mask(SYS_MASK_MRXDFR);
 
     /* Set configured Antenna Delay */
-    controller->set_tx_antenna_delay(INITIAL_ANTENNA_DELAY);
-    controller->set_rx_antenna_delay(INITIAL_ANTENNA_DELAY);
+    controller->set_tx_antenna_delay(controller->_dev_instance.antenna_delay);
+    controller->set_rx_antenna_delay(controller->_dev_instance.antenna_delay);
     busywait_nanoseconds(1000000);  //< Wait 1ms
 
     /* Depending on wether its an Anchor or TAG (Drone) return specific Ranging object */
@@ -122,8 +123,12 @@ DWMRanging::DWMRanging(DWMController* controller)
  */
 dwm_com_error_t DWMRanging::perform_reset(bool performHardReset) const
 {
+    dwm_com_error_t ret = SUCCESS;
+
     if (performHardReset)
-        _controller->hard_reset();
+        ret = _controller->hard_reset();
     else
-        _controller->soft_reset();
+        ret = _controller->soft_reset();
+
+    return ret;
 }

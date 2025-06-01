@@ -53,6 +53,7 @@ typedef struct {
     uint8_t         irq_gpio_pin;
     uint8_t         rst_gpio_pin;
     dw1000_mode_enum_t   mode;
+    uint16_t        antenna_delay;
 } dw1000_dev_instance_t;
 
 
@@ -184,12 +185,6 @@ public:
     inline dwm_com_error_t poll_tx_status() {
         return poll_status_bit(SYS_STATUS_TXFRS, DW1000_TIMEOUT);
     }
-
-    /* Poll for Data Frame Ready Event */
-    inline dwm_com_error_t poll_rx_status() {
-        return poll_status_bit(SYS_STATUS_RXDFR, RX_TIMEOUT);
-    }
-
 
     /* Recover from Reset */
     dwm_com_error_t recover_from_reset();

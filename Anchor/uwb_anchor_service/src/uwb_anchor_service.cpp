@@ -81,7 +81,8 @@ int main(int argc, char* argv[]) {
         .gpiod_chip = reader.Get("hardware", "gpiod_chip", "/dev/gpiochip4").c_str(),
         .irq_gpio_pin = reader.GetInteger("hardware", "irq_pin", 26),
         .rst_gpio_pin = reader.GetInteger("hardware", "rst_pin", 27),
-        .mode = static_cast<dw1000_mode_enum_t>(reader.GetInteger("anchor", "uwb_mode", 1))
+        .mode = static_cast<dw1000_mode_enum_t>(reader.GetInteger("anchor", "uwb_mode", 1)),
+        .antenna_delay = reader.GetInteger("anchor", "antenna_delay", INITIAL_ANTENNA_DELAY)
     };
 
     /* Create and initialize DWMController Object */

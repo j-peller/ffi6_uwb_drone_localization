@@ -90,19 +90,36 @@ DWMController* DWMController::create_instance(dw1000_dev_instance_t* device)
      * DWM1000 IRQ Pin stays asserted!!
      */
 
-    struct gpiod_line_request_config config = {
+    struct gpiod_line_request_config irq_config = {
         .consumer = "DWM1000Interrupt",
         .request_type = GPIOD_LINE_REQUEST_EVENT_RISING_EDGE,
         .flags = GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_DOWN
     };
 
 
-    if (gpiod_line_request(instance->_irq_line, &config, 0) < 0) {
+    if (gpiod_line_request(instance->_irq_line, &irq_config, 0) < 0) {
         perror("Failed to set IRQ GPIO Pin to INPUT");
         gpiod_chip_close(instance->_gpio_chip);
         delete instance;
         return NULL;
     }
+
+    struct gpiod_line_request_config rst_config = {
+        .consumer = "DWM1000Reset",
+        .request_type = GPIOD_LINE_REQUEST_DIRECTION_INPUT,
+        .flags = GPIOD_LINE_REQUEST_FLAG_BIAS_DISABLE
+    };
+
+
+    if (gpiod_line_request(instance->_rst_line, &rst_config, 0) < 0) {
+        perror("Failed to set RST GPIO Pin to INPUT");
+        gpiod_chip_close(instance->_gpio_chip);
+        delete instance;
+        return NULL;
+    }
+
+    /* */
+    usleep(500000);
 
     /* Test SPI Connection to DWM1000 */
     uint32_t device_id = 0;
@@ -681,6 +698,7 @@ dwm_com_error_t DWMController::hard_reset()
 void DWMController::hardReset()
 {
     /* Request line as output and set to LOW */
+    gpiod_line_release(_rst_line); 
     if (gpiod_line_request_output(_rst_line, "DWM1000Reset", 0) < 0) {
         perror("Failed to set RST GPIO Pin to OUTPUT");
     }
@@ -689,8 +707,14 @@ void DWMController::hardReset()
     busywait_nanoseconds(1000);
 
     /* release and reassign for input */
-    gpiod_line_release(_rst_line);
-    if (gpiod_line_request_input(_rst_line, "DWM1000Reset") < 0) {
+    struct gpiod_line_request_config rst_config = {
+        .consumer = "DWM1000Reset",
+        .request_type = GPIOD_LINE_REQUEST_DIRECTION_INPUT,
+        .flags = GPIOD_LINE_REQUEST_FLAG_BIAS_DISABLE
+    };
+
+    gpiod_line_release(_rst_line); 
+    if (gpiod_line_request(_rst_line, &rst_config, 0) < 0) {
         perror("Failed to set RST GPIO Pin to INPUT");
     }
 

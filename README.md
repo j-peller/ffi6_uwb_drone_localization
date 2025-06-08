@@ -32,7 +32,7 @@ if (!reader.start()) {
 
 4. Distanzen abrufen
 ```C
-distances_t distances = reader.getLatestDistances();
+distances_t distances = reader.get_latest_distances_to_anchors();
 
 std::cout << "d1: " << distances.d1 << " m\n";
 std::cout << "d2: " << distances.d2 << " m\n";

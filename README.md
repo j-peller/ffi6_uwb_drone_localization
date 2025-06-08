@@ -2,6 +2,13 @@
 
 Dieses Modul liest über UART die Konsolenausgaben des DWM1001-DEV mit und extrahiert die jeweils aktuellste Messung. Die zuletzt empfangenen Distanzdaten können über einen einfachen Funktionsaufruf abgerufen werden und werden als ``distances`` zurückgeliefert.
 
+## Requirements
+
+```
+apt update
+apt install nlohmann-json3-dev libeigen3-dev
+```
+
 ## How to use
 
 1. Modul Einbinden

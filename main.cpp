@@ -11,7 +11,7 @@ int main() {
 
     for (int i = 0; i < 10; ++i) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        distances_t distances = reader.getLatestDistances();
+        distances_t distances = reader.get_latest_distances_to_anchors();
         std::cout << "Distances: "
                   << "Anchor 1: " << distances.d1 << " m, "
                   << "Anchor 2: " << distances.d2 << " m, "

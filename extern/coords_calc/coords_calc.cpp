@@ -73,8 +73,8 @@ pos coords_calc(
 
         std::cout << solution << std::endl;
 
-        double x = solution[0];
-        double y = solution[1];
+        x = solution[0];
+        y = solution[1];
     } else {  // use of only 3 anchors
         Eigen::Matrix<double, 2, 2> A;
         A << -2 * pos_A1.x + 2 * pos_A2.x, -2 * pos_A1.y + 2 * pos_A2.y,
@@ -88,8 +88,8 @@ pos coords_calc(
 
         std::cout << solution << std::endl;
 
-        double x = solution[0];
-        double y = solution[1];
+        x = solution[0];
+        y = solution[1];
     }
 
     // calculate z and check for NaN when resubstituting

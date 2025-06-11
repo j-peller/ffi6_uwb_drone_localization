@@ -20,10 +20,10 @@ int main() {
     }
 
     /* (0,0) Mittelpunkt */
-    const pos POS_ANCHOR_1 = { .x = -0.25, .y = 0.25, .z = 0.0 };
-    const pos POS_ANCHOR_2 = { .x = 0.25, .y = 0.25, .z = 0.0 };
-    const pos POS_ANCHOR_3 = { .x = 0.25, .y = -0.25, .z = 0.0 };
-    const pos POS_ANCHOR_4 = { .x = -0.25, .y = -0.25, .z = 0.0 };
+    const pos POS_ANCHOR_1 = { .x = -0.50, .y = 0.50, .z = 0.0 };
+    const pos POS_ANCHOR_2 = { .x = -0.50, .y = -0.50, .z = 0.0 };
+    const pos POS_ANCHOR_3 = { .x = 0.50, .y = -0.50, .z = 0.0 };
+    const pos POS_ANCHOR_4 = { .x = 0.50, .y = 0.50, .z = 0.0 };
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
@@ -63,6 +63,9 @@ int main() {
     while (true) {
         ds = reader.get_latest_distances_to_anchors();
 
+        fprintf(stdout, "Distances: d1=%.2f, d2=%.2f, d3=%.2f, d4=%.2f\n",
+               ds.d1, ds.d2, ds.d3, ds.d4);
+
         result = coords_calc(
             ds.d1, ds.d2, ds.d3, ds.d4,
             POS_ANCHOR_1,
@@ -79,7 +82,7 @@ int main() {
         fprintf(stdout, "Calculated Position: x=%.2f, y=%.2f, z=%.2f\n",
                result.x, result.y, 0.0f);
 
-        usleep(250000);
+        usleep(50000);
     }
     
     reader.stop();

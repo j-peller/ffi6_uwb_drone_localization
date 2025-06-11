@@ -5,10 +5,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Suche nach dem nlohmann_json-Package
-find_package(nlohmann_json 3.12.0 REQUIRED)
+find_package(nlohmann_json 3.11.0 REQUIRED)
 find_package(Eigen3 3.4 REQUIRED)
+find_package(libwebsockets REQUIRED)
 
 add_executable(dwm_uart_reader
+    extern/coords_calc/coords_calc.cpp
     main.cpp
 )
 
@@ -18,4 +20,5 @@ target_link_libraries(dwm_uart_reader
         Eigen3::Eigen
         pthread
         nlohmann_json::nlohmann_json
+        ${LIB_WEBSOCKETS_LIBRARIES}
 )

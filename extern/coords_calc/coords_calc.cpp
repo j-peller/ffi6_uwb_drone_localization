@@ -4,6 +4,8 @@
 
 #include "coords_calc.h"
 
+static const bool use_3_anchors = true;
+
 /**
  * @brief Euclidean distance between to positions using pos datatype.
  * 
@@ -53,22 +55,42 @@ pos coords_calc(
     double d1, double d2, double d3, double d4,
     pos pos_A1, pos pos_A2, pos pos_A3, pos pos_A4
 ) {
-    Eigen::Matrix<double, 3, 2> A;
-    A << -2 * pos_A1.x + 2 * pos_A2.x, -2 * pos_A1.y + 2 * pos_A2.y,
-        -2 * pos_A2.x + 2 * pos_A3.x, -2 * pos_A2.y + 2 * pos_A3.y,
-        -2 * pos_A3.x + 2 * pos_A4.x, -2 * pos_A3.y + 2 * pos_A4.y;
-    
-    Eigen::Vector<double, 3> b;
-    b << d1 * d1 - d2 * d2,
-        d2 * d2 - d3 * d3,
-        d3 * d3 - d4 * d4;
-    
-    Eigen::VectorXd solution = A.colPivHouseholderQr().solve(b);
 
-    //std::cout << solution << std::endl;
+    double x, y;
 
-    double x = solution[0];
-    double y = solution[1];
+    if (!use_3_anchors) {  // use of 4 anchors
+        Eigen::Matrix<double, 3, 2> A;
+        A << -2 * pos_A1.x + 2 * pos_A2.x, -2 * pos_A1.y + 2 * pos_A2.y,
+            -2 * pos_A2.x + 2 * pos_A3.x, -2 * pos_A2.y + 2 * pos_A3.y,
+            -2 * pos_A3.x + 2 * pos_A4.x, -2 * pos_A3.y + 2 * pos_A4.y;
+        
+        Eigen::Vector<double, 3> b;
+        b << d1 * d1 - d2 * d2,
+            d2 * d2 - d3 * d3,
+            d3 * d3 - d4 * d4;
+        
+        Eigen::VectorXd solution = A.colPivHouseholderQr().solve(b);
+
+        std::cout << solution << std::endl;
+
+        double x = solution[0];
+        double y = solution[1];
+    } else {  // use of only 3 anchors
+        Eigen::Matrix<double, 2, 2> A;
+        A << -2 * pos_A1.x + 2 * pos_A2.x, -2 * pos_A1.y + 2 * pos_A2.y,
+            -2 * pos_A2.x + 2 * pos_A3.x, -2 * pos_A2.y + 2 * pos_A3.y;
+        
+        Eigen::Vector<double, 2> b;
+        b << d1 * d1 - d2 * d2,
+            d2 * d2 - d3 * d3;
+        
+        Eigen::VectorXd solution = A.colPivHouseholderQr().solve(b);
+
+        std::cout << solution << std::endl;
+
+        double x = solution[0];
+        double y = solution[1];
+    }
 
     // calculate z and check for NaN when resubstituting
     double z_sum = 0;
@@ -84,10 +106,6 @@ pos coords_calc(
     double z3 = resubstitution_for_height(d3, x, y, pos_A3);
     if (!std::isnan(z3)) {
         z_sum += z3; z_count++;
-    }
-    double z4 = resubstitution_for_height(d4, x, y, pos_A4);
-    if (!std::isnan(z4)) {
-        z_sum += z4; z_count++;
     }
     double z;
     if (z_count == 0) {z = NAN;} else {z = z_sum / z_count;}

@@ -75,12 +75,12 @@ int main() {
         );
 
         char buffer[128];
-        snprintf(buffer, sizeof(buffer), "%.3f,%.3f,%.3f\n", result.x, result.y, 0.0f);
+        snprintf(buffer, sizeof(buffer), "%.3f,%.3f,%.3f\n", result.x, result.y, result.z);
         send(client_fd, buffer, strlen(buffer), 0);
 
         // Print the calculated position
         fprintf(stdout, "Calculated Position: x=%.2f, y=%.2f, z=%.2f\n",
-               result.x, result.y, 0.0f);
+               result.x, result.y, result.z);
 
         usleep(50000);
     }

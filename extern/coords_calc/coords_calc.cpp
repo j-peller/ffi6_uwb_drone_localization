@@ -4,7 +4,7 @@
 
 #include "coords_calc.h"
 
-static const bool use_3_anchors = true;
+static const bool use_3_anchors = false;
 
 /**
  * @brief Euclidean distance between to positions using pos datatype.
